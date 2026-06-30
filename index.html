@@ -1,13 +1,64 @@
-<h1 style="color:red">TEST-UPDATE-999</h1>
 <!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VIP 百家乐</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: radial-gradient(circle at center, #0b3d2e, #041a12);
+    color: white;
+    text-align: center;
+}
+
+/* 标题 */
+h1 {
+    margin: 10px 0;
+}
+
+/* 资金 */
+#money {
+    font-size: 22px;
+    color: gold;
+}
+
+/* 按钮 */
+button {
+    padding: 10px 14px;
+    margin: 5px;
+    font-size: 16px;
+}
+
+/* 赌场按钮 */
+.box {
+    display: inline-block;
+    padding: 12px 18px;
+    margin: 10px;
+    background: gold;
+    color: black;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+/* 牌 */
+.card {
+    display: inline-block;
+    padding: 10px 14px;
+    margin: 5px;
+    background: white;
+    color: black;
+    border-radius: 8px;
+    font-size: 20px;
+    min-width: 40px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+</style>
 </head>
 
-<body style="background:#0b3d2e;color:white;text-align:center;font-family:Arial">
+<body>
 
 <h1>VIP 百家乐</h1>
 
@@ -16,10 +67,11 @@
 <hr>
 
 <div>
-<button onclick="placeBet('player')">闲</button>
-<button onclick="placeBet('banker')">庄</button>
-<button onclick="placeBet('tie')">和</button>
+<div class="box" onclick="placeBet('player')">闲</div>
+<div class="box" onclick="placeBet('banker')">庄</div>
+<div class="box" onclick="placeBet('tie')">和</div>
 </div>
+
 <div style="margin-top:20px">
   <div>闲牌：<span id="playerCards"></span></div>
   <div>庄牌：<span id="bankerCards"></span></div>
@@ -32,45 +84,67 @@
 <p id="result"></p>
 
 <script>
-let money = 10000;
+
+let money = parseInt(localStorage.getItem("money") || "10000");
 let bet = null;
 let betAmount = 1000;
 
 let shoe = [];
+let suits = ["♠","♥","♦","♣"];
+let values = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
+// 初始化8副牌
 function initShoe(){
     shoe = [];
     for(let d=0; d<8; d++){
         for(let i=0;i<52;i++){
-            let v = (i%13)+1;
-            if(v>9) v=0;
-            shoe.push(v);
+            let v = (i%13);
+            let s = suits[i%4];
+            shoe.push(values[v] + s);
         }
     }
+
+    // 洗牌
     for(let i=shoe.length-1;i>0;i--){
         let j=Math.floor(Math.random()*(i+1));
         [shoe[i],shoe[j]]=[shoe[j],shoe[i]];
     }
 }
 
+// 抽牌
 function draw(){
     return shoe.pop();
 }
 
-function score(arr){
-    return arr.reduce((a,b)=>a+b,0)%10;
+// 牌值
+function cardValue(c){
+    let v = c.replace(/[♠♥♦♣]/,"");
+    if(v==="A") return 1;
+    if(["J","Q","K"].includes(v)) return 0;
+    return parseInt(v);
 }
 
+// 计算点数
+function score(arr){
+    return arr.reduce((a,b)=>cardValue(a)+cardValue(b),0)%10;
+}
+
+// 下注
 function placeBet(t){
     bet=t;
     document.getElementById("result").innerText="已下注："+t;
 }
 
+// 发牌
 function deal(){
 
     if(!bet){
         alert("请先下注");
         return;
+    }
+
+    if(shoe.length < 10){
+        initShoe();
     }
 
     let p=[draw(),draw()];
@@ -79,8 +153,24 @@ function deal(){
     let ps=score(p);
     let bs=score(b);
 
-    if(ps<=5) p.push(draw());
-    if(bs<=5) b.push(draw());
+    let p3=null;
+
+    if(ps<=5){
+        p.push(draw());
+        p3=p[2];
+    }
+
+    if(bs<=2){
+        b.push(draw());
+    } else if(bs===3 && p3!==8){
+        b.push(draw());
+    } else if(bs===4 && [2,3,4,5,6,7].includes(p3)){
+        b.push(draw());
+    } else if(bs===5 && [4,5,6,7].includes(p3)){
+        b.push(draw());
+    } else if(bs===6 && [6,7].includes(p3)){
+        b.push(draw());
+    }
 
     let fp=score(p);
     let fb=score(b);
@@ -95,15 +185,23 @@ function deal(){
     localStorage.setItem("money",money);
 
     document.getElementById("money").innerText=money;
-    document.getElementById("result").innerText=
-        "结果："+r+" 闲:"+fp+" 庄:"+fb;
+
+    document.getElementById("playerCards").innerHTML =
+        p.map(c=>`<span class="card">${c}</span>`).join("");
+
+    document.getElementById("bankerCards").innerHTML =
+        b.map(c=>`<span class="card">${c}</span>`).join("");
+
+    document.getElementById("result").innerText =
+        `结果：${r} | 闲:${fp} 庄:${fb}`;
 
     bet=null;
 }
 
 initShoe();
+document.getElementById("money").innerText=money;
+
 </script>
 
 </body>
 </html>
-<!-- force rebuild 1 -->
