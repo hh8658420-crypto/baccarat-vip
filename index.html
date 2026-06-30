@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VIP 百家乐</title>
 </head>
+
 <body style="background:#0b3d2e;color:white;text-align:center;font-family:Arial">
 
 <h1>VIP 百家乐</h1>
@@ -14,9 +15,9 @@
 <hr>
 
 <div>
-<button onclick="bet('player')">闲</button>
-<button onclick="bet('banker')">庄</button>
-<button onclick="bet('tie')">和</button>
+<button onclick="placeBet('player')">闲</button>
+<button onclick="placeBet('banker')">庄</button>
+<button onclick="placeBet('tie')">和</button>
 </div>
 
 <br>
@@ -27,45 +28,75 @@
 
 <script>
 let money = 10000;
-let currentBet = null;
+let bet = null;
 let betAmount = 1000;
 
-function bet(type){
-    currentBet = type;
-    alert("已下注：" + type);
+let shoe = [];
+
+function initShoe(){
+    shoe = [];
+    for(let d=0; d<8; d++){
+        for(let i=0;i<52;i++){
+            let v = (i%13)+1;
+            if(v>9) v=0;
+            shoe.push(v);
+        }
+    }
+    for(let i=shoe.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1));
+        [shoe[i],shoe[j]]=[shoe[j],shoe[i]];
+    }
 }
 
-function card(){
-    return Math.floor(Math.random()*10);
+function draw(){
+    return shoe.pop();
+}
+
+function score(arr){
+    return arr.reduce((a,b)=>a+b,0)%10;
+}
+
+function placeBet(t){
+    bet=t;
+    document.getElementById("result").innerText="已下注："+t;
 }
 
 function deal(){
 
-    if(!currentBet){
+    if(!bet){
         alert("请先下注");
         return;
     }
 
-    let player = (card()+card())%10;
-    let banker = (card()+card())%10;
+    let p=[draw(),draw()];
+    let b=[draw(),draw()];
 
-    let result = "";
+    let ps=score(p);
+    let bs=score(b);
 
-    if(player > banker) result = "player";
-    else if(banker > player) result = "banker";
-    else result = "tie";
+    if(ps<=5) p.push(draw());
+    if(bs<=5) b.push(draw());
 
-    if(result === currentBet){
-        money += betAmount;
-    }else{
-        money -= betAmount;
-    }
+    let fp=score(p);
+    let fb=score(b);
 
-    document.getElementById("money").innerText = money;
-    document.getElementById("result").innerText = "结果：" + result;
+    let r="tie";
+    if(fp>fb) r="player";
+    else if(fb>fp) r="banker";
 
-    currentBet = null;
+    if(r===bet) money+=betAmount;
+    else money-=betAmount;
+
+    localStorage.setItem("money",money);
+
+    document.getElementById("money").innerText=money;
+    document.getElementById("result").innerText=
+        "结果："+r+" 闲:"+fp+" 庄:"+fb;
+
+    bet=null;
 }
+
+initShoe();
 </script>
 
 </body>
