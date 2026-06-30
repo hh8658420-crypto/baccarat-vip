@@ -1,129 +1,308 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="VIP百家乐">
-<meta name="theme-color" content="#4b0710">
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css">
-<title>VIP 真人百家乐</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Macau VIP Baccarat Simulator</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;background:#050403;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif;overflow:hidden}
+#app{width:100vw;height:100vh;background:radial-gradient(circle at 50% 5%,#3c1711 0,#160807 36%,#050302 100%);position:relative;display:flex;flex-direction:column}
+.top{height:52px;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(180deg,#2d120d,#120605);border-bottom:1px solid #a86b24}
+.logo{font-weight:900;color:#ffd27a;letter-spacing:1px;font-size:15px}
+.money{font-size:13px;color:#fff}
+.money b{color:#ffd27a}
+.timer{position:absolute;top:58px;left:50%;transform:translateX(-50%);width:58px;height:58px;border-radius:50%;background:radial-gradient(circle,#ffdd83,#a15b11);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#1b0902;border:4px solid #fff3bd;box-shadow:0 0 22px #ffbf38;z-index:5}
+.stage{flex:1;position:relative;overflow:hidden;padding:72px 10px 6px}
+.dealer{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:170px;height:118px;border-radius:86px 86px 22px 22px;background:linear-gradient(180deg,#ffe3c0,#bd7658 55%,#1b1110 56%);box-shadow:0 8px 30px #000;z-index:1}
+.dealer:before{content:"真人荷官";position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#111;padding:4px 12px;border-radius:20px;border:1px solid #d9a74a;color:#ffd27a;font-size:12px}
+.table{position:absolute;left:50%;top:90px;transform:translateX(-50%);width:96%;height:52%;border-radius:46% 46% 22px 22px;background:radial-gradient(circle at 50% 35%,#147747,#064625 70%,#022914);border:8px solid #9a5a20;box-shadow:inset 0 0 36px #001b0d,0 20px 40px #000}
+.area{position:absolute;border:2px solid rgba(255,215,120,.75);border-radius:14px;background:rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#ffd27a;font-weight:900;text-align:center}
+.area small{font-size:11px;color:#fff;margin-top:3px}
+.area.active{box-shadow:0 0 18px #ffd95a;background:rgba(255,210,70,.18)}
+.player{left:6%;bottom:18%;width:26%;height:30%}
+.tie{left:37%;bottom:20%;width:26%;height:25%}
+.banker{right:6%;bottom:18%;width:26%;height:30%}
+.side{height:14%;font-size:11px}
+.pairP{left:6%;top:22%;width:20%}
+.big{left:28%;top:19%;width:19%}
+.any{left:50.5%;top:19%;width:19%}
+.pairB{right:6%;top:22%;width:20%}
+.small{left:40.5%;top:4%;width:19%}
+.perfect{right:28%;top:4%;width:19%}
+.cards{position:absolute;top:37%;width:40%;height:90px;display:flex;justify-content:center;gap:8px;z-index:3}
+.cards.playerCards{left:5%}
+.cards.bankerCards{right:5%}
+.card{width:52px;height:74px;background:#fff;border-radius:7px;color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:21px;box-shadow:0 6px 12px #000;transform:translateY(-18px);opacity:0;animation:deal .35s forwards}
+.card.red{color:#c1121f}
+.card span{font-size:12px}
+@keyframes deal{to{opacity:1;transform:translateY(0)}}
+.score{position:absolute;top:57%;font-size:20px;font-weight:900;color:#fff;text-shadow:0 2px 8px #000;z-index:4}
+.score.p{left:17%}.score.b{right:17%}
+.result{position:absolute;top:68%;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#fff;background:rgba(0,0,0,.45);border:1px solid #ffd27a;border-radius:18px;padding:8px 18px;z-index:6;min-width:180px;text-align:center}
+.controls{height:150px;background:linear-gradient(180deg,#160806,#070302);border-top:1px solid #a86b24;padding:6px 8px}
+.chips{display:flex;gap:8px;justify-content:center;margin-bottom:7px}
+.chip{width:46px;height:46px;border-radius:50%;border:4px dashed #fff;background:radial-gradient(circle,#fff 0 30%,#c01515 31%);display:flex;align-items:center;justify-content:center;font-weight:900;color:#111;font-size:12px;box-shadow:0 4px 8px #000}
+.chip.sel{outline:3px solid #ffd700;transform:scale(1.08)}
+.btns{display:flex;gap:8px;justify-content:center}
+button{border:0;border-radius:10px;padding:10px 13px;font-weight:900;background:linear-gradient(180deg,#ffd982,#a86b24);color:#210b04}
+button.dark{background:#222;color:#fff;border:1px solid #777}
+.roads{height:150px;background:#f5f0e7;color:#111;display:flex;gap:4px;padding:4px;border-top:2px solid #b7862e}
+.road{flex:1;background:#fff;border:1px solid #bbb;overflow:hidden;position:relative}
+.road h4{margin:0;height:18px;font-size:11px;background:#eee;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(18,16px);grid-auto-rows:16px;padding:2px}
+.cell{width:15px;height:15px;border:1px solid #ddd;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:900}
+.P{border-color:#1d5cff;color:#1d5cff}.B{border-color:#d71920;color:#d71920}.T{border-color:#00a050;color:#00a050}
+.betTag{position:absolute;bottom:5px;font-size:11px;color:#fff;background:#0008;padding:2px 5px;border-radius:10px}
+@media(max-height:720px){.roads{height:120px}.controls{height:135px}.table{height:50%}.chip{width:40px;height:40px;font-size:11px}}
+</style>
 </head>
-
 <body>
-<div class="phone">
+<div id="app">
+  <div class="top">
+    <div class="logo">MACAU VIP BACCARAT</div>
+    <div class="money">余额：<b id="balance">100000</b>　下注：<b id="totalBet">0</b></div>
+  </div>
 
-  <header class="topbar">
-    <button class="icon">×</button>
-    <button class="icon">↻</button>
-    <div class="room-title">VIP真人百家乐</div>
-    <div class="balance">💰 <span id="money">10000</span></div>
-  </header>
+  <div class="timer" id="timer">15</div>
 
-  <section class="dealer-screen">
-    <div class="casino-bg"></div>
-    <div class="dealer-card">
-      <div class="dealer-face">👩🏻‍💼</div>
-      <div class="dealer-tag">原创VIP荷官</div>
+  <div class="stage">
+    <div class="dealer"></div>
+    <div class="table">
+      <div class="area player" data-bet="player">闲 <small>1:1</small><div class="betTag" id="tag_player">0</div></div>
+      <div class="area tie" data-bet="tie">和 <small>8:1</small><div class="betTag" id="tag_tie">0</div></div>
+      <div class="area banker" data-bet="banker">庄 <small>0.95:1</small><div class="betTag" id="tag_banker">0</div></div>
+
+      <div class="area side pairP" data-bet="playerPair">闲对 <small>11:1</small><div class="betTag" id="tag_playerPair">0</div></div>
+      <div class="area side big" data-bet="big">大 <small>0.54:1</small><div class="betTag" id="tag_big">0</div></div>
+      <div class="area side any" data-bet="anyPair">任意对子 <small>5:1</small><div class="betTag" id="tag_anyPair">0</div></div>
+      <div class="area side pairB" data-bet="bankerPair">庄对 <small>11:1</small><div class="betTag" id="tag_bankerPair">0</div></div>
+      <div class="area side small" data-bet="small">小 <small>1.5:1</small><div class="betTag" id="tag_small">0</div></div>
+      <div class="area side perfect" data-bet="perfectPair">完美对子 <small>25:1</small><div class="betTag" id="tag_perfectPair">0</div></div>
     </div>
 
-    <div class="table-sign">
-      <b>VIP LIVE CASINO</b>
-      <span>娱乐概率模拟器</span>
+    <div class="cards playerCards" id="playerCards"></div>
+    <div class="cards bankerCards" id="bankerCards"></div>
+    <div class="score p" id="pScore">闲 0</div>
+    <div class="score b" id="bScore">庄 0</div>
+    <div class="result" id="result">请选择筹码下注</div>
+  </div>
+
+  <div class="roads">
+    <div class="road"><h4>珠盘路</h4><div class="grid" id="bead"></div></div>
+    <div class="road"><h4>大路</h4><div class="grid" id="bigRoad"></div></div>
+    <div class="road"><h4>大眼路</h4><div class="grid" id="eyeRoad"></div></div>
+    <div class="road"><h4>小路</h4><div class="grid" id="smallRoad"></div></div>
+    <div class="road"><h4>蟑螂路</h4><div class="grid" id="cockRoad"></div></div>
+  </div>
+
+  <div class="controls">
+    <div class="chips" id="chips"></div>
+    <div class="btns">
+      <button onclick="clearBets()">撤销下注</button>
+      <button class="dark" onclick="toggleSound()">音效 <span id="soundState">开</span></button>
+      <button class="dark" onclick="resetGame()">重置</button>
     </div>
-
-    <div class="hand-display">
-      <div>
-        <span>闲牌</span>
-        <div id="playerCards" class="cards"></div>
-      </div>
-      <div>
-        <span>庄牌</span>
-        <div id="bankerCards" class="cards"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="bet-panel">
-    <div class="round-info">
-      <span>局号：SIM-2026</span>
-      <strong id="countdown">下注中</strong>
-      <span>限红：100-100000</span>
-    </div>
-
-    <div class="tips-row">
-      <div>小龙<br><span>闲2张牌7点赢</span></div>
-      <div>大龙<br><span>闲3张牌7点赢</span></div>
-      <div>龙虎斗<br><span>娱乐玩法展示</span></div>
-      <div>大老虎<br><span>庄3张牌6点赢</span></div>
-      <div>小老虎<br><span>庄2张牌6点赢</span></div>
-    </div>
-
-    <div class="main-bets">
-      <button class="bet-box player" data-bet="player">
-        <small>7%</small>
-        <b>闲</b>
-        <span>1:1</span>
-      </button>
-
-      <button class="bet-box tie" data-bet="tie">
-        <small>0%</small>
-        <b>和</b>
-        <span>1:8</span>
-      </button>
-
-      <button class="bet-box banker" data-bet="banker">
-        <small>93%</small>
-        <b>庄</b>
-        <span>1:0.95</span>
-      </button>
-    </div>
-
-    <div class="action-row">
-      <button id="cancelBtn">× 取消</button>
-      <button id="repeatBtn">↻ 重复</button>
-    </div>
-
-    <div id="message" class="message">请选择筹码和下注区域</div>
-  </section>
-
-  <section class="chip-bar">
-    <button class="side-btn">玩法</button>
-    <div class="chips">
-      <button class="chip c10" data-chip="100">100</button>
-      <button class="chip c20" data-chip="500">500</button>
-      <button class="chip c50 active" data-chip="1000">1K</button>
-      <button class="chip c100" data-chip="5000">5K</button>
-      <button class="chip c200" data-chip="10000">1W</button>
-    </div>
-    <button class="side-btn" id="soundBtn">🔊</button>
-  </section>
-
-  <section class="road-tabs">
-    <button>庄问路</button>
-    <button>闲问路</button>
-    <button id="dealBtn">开始发牌</button>
-  </section>
-
-  <section class="roads">
-    <div class="stat-line">
-      <span>🔴 <b id="bWins">0</b></span>
-      <span>🔵 <b id="pWins">0</b></span>
-      <span>🟢 <b id="tWins">0</b></span>
-      <span>局数 <b id="rounds">0</b></span>
-      <span>胜率 <b id="winRate">0%</b></span>
-    </div>
-
-    <div class="road-wrap">
-      <div id="beadRoad" class="bead-road"></div>
-      <div id="bigRoad" class="big-road"></div>
-    </div>
-  </section>
-
+  </div>
 </div>
 
-<script src="game.js"></script>
+<script>
+let balance=100000, chip=1000, sound=true, time=15, betting=true;
+const chipList=[100,500,1000,5000,10000,50000];
+const bets={player:0,banker:0,tie:0,playerPair:0,bankerPair:0,big:0,small:0,anyPair:0,perfectPair:0};
+let history=[];
+
+const suits=["♠","♥","♣","♦"];
+const ranks=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+function newCard(){
+  const r=ranks[Math.floor(Math.random()*ranks.length)];
+  const s=suits[Math.floor(Math.random()*suits.length)];
+  return {r,s,v:r==="A"?1:["10","J","Q","K"].includes(r)?0:parseInt(r),red:s==="♥"||s==="♦"};
+}
+function score(arr){return arr.reduce((a,c)=>a+c.v,0)%10}
+function pair(a,b){return a.r===b.r}
+function perfect(a,b){return a.r===b.r&&a.s===b.s}
+
+function bankerDrawRule(bScore,pThird){
+  if(pThird===null)return bScore<=5;
+  if(bScore<=2)return true;
+  if(bScore===3)return pThird!==8;
+  if(bScore===4)return pThird>=2&&pThird<=7;
+  if(bScore===5)return pThird>=4&&pThird<=7;
+  if(bScore===6)return pThird===6||pThird===7;
+  return false;
+}
+
+function playRound(){
+  betting=false;
+  clearCards();
+  let P=[newCard(),newCard()];
+  let B=[newCard(),newCard()];
+  let ps=score(P), bs=score(B);
+  let pThird=null;
+
+  if(!(ps>=8||bs>=8)){
+    if(ps<=5){
+      let c=newCard(); P.push(c); pThird=c.v;
+      bs=score(B);
+      if(bankerDrawRule(bs,pThird))B.push(newCard());
+    }else{
+      if(bs<=5)B.push(newCard());
+    }
+  }
+
+  ps=score(P); bs=score(B);
+
+  setTimeout(()=>renderCards(P,B),100);
+
+  const win=ps>bs?"player":bs>ps?"banker":"tie";
+  const totalCards=P.length+B.length;
+  const flags={
+    playerPair:pair(P[0],P[1]),
+    bankerPair:pair(B[0],B[1]),
+    anyPair:pair(P[0],P[1])||pair(B[0],B[1]),
+    perfectPair:perfect(P[0],P[1])||perfect(B[0],B[1]),
+    big:totalCards>=5,
+    small:totalCards===4
+  };
+
+  setTimeout(()=>settle(win,flags,ps,bs),900);
+}
+
+function settle(win,flags,ps,bs){
+  let pay=0;
+  if(win==="player"&&bets.player)pay+=bets.player*2;
+  if(win==="banker"&&bets.banker)pay+=bets.banker*1.95;
+  if(win==="tie"&&bets.tie)pay+=bets.tie*9;
+
+  if(win==="tie"){
+    pay+=bets.player+bets.banker;
+  }
+
+  if(flags.playerPair)pay+=bets.playerPair*12;
+  if(flags.bankerPair)pay+=bets.bankerPair*12;
+  if(flags.anyPair)pay+=bets.anyPair*6;
+  if(flags.perfectPair)pay+=bets.perfectPair*26;
+  if(flags.big)pay+=bets.big*1.54;
+  if(flags.small)pay+=bets.small*2.5;
+
+  balance+=Math.floor(pay);
+
+  history.push(win==="player"?"P":win==="banker"?"B":"T");
+  if(history.length>90)history.shift();
+
+  document.getElementById("result").innerHTML =
+    (win==="player"?"闲赢":win==="banker"?"庄赢":"和局")+
+    `　闲${ps} / 庄${bs}<br>`+
+    (pay>0?`派彩 ${Math.floor(pay)}`:"未中奖");
+
+  beep();
+  update();
+  renderRoads();
+
+  Object.keys(bets).forEach(k=>bets[k]=0);
+  setTimeout(()=>{update();time=15;betting=true},2600);
+}
+
+function renderCards(P,B){
+  const pc=document.getElementById("playerCards"), bc=document.getElementById("bankerCards");
+  pc.innerHTML="";bc.innerHTML="";
+  P.forEach((c,i)=>setTimeout(()=>pc.appendChild(cardEl(c)),i*180));
+  B.forEach((c,i)=>setTimeout(()=>bc.appendChild(cardEl(c)),i*180+90));
+  document.getElementById("pScore").textContent="闲 "+score(P);
+  document.getElementById("bScore").textContent="庄 "+score(B);
+}
+function cardEl(c){
+  const d=document.createElement("div");
+  d.className="card "+(c.red?"red":"");
+  d.innerHTML=`${c.r}<span>${c.s}</span>`;
+  return d;
+}
+function clearCards(){
+  document.getElementById("playerCards").innerHTML="";
+  document.getElementById("bankerCards").innerHTML="";
+  document.getElementById("pScore").textContent="闲 0";
+  document.getElementById("bScore").textContent="庄 0";
+}
+
+function placeBet(type){
+  if(!betting)return;
+  if(balance<chip){document.getElementById("result").textContent="余额不足";return}
+  balance-=chip;
+  bets[type]+=chip;
+  document.querySelector(`[data-bet="${type}"]`).classList.add("active");
+  setTimeout(()=>document.querySelector(`[data-bet="${type}"]`).classList.remove("active"),180);
+  update();
+}
+
+document.querySelectorAll(".area").forEach(a=>a.onclick=()=>placeBet(a.dataset.bet));
+
+function update(){
+  document.getElementById("balance").textContent=balance;
+  let t=Object.values(bets).reduce((a,b)=>a+b,0);
+  document.getElementById("totalBet").textContent=t;
+  Object.keys(bets).forEach(k=>document.getElementById("tag_"+k).textContent=bets[k]);
+}
+function clearBets(){
+  if(!betting)return;
+  let t=Object.values(bets).reduce((a,b)=>a+b,0);
+  balance+=t;
+  Object.keys(bets).forEach(k=>bets[k]=0);
+  update();
+}
+function resetGame(){
+  balance=100000;history=[];clearBets();renderRoads();clearCards();
+  document.getElementById("result").textContent="已重置";
+}
+function toggleSound(){
+  sound=!sound;
+  document.getElementById("soundState").textContent=sound?"开":"关";
+}
+function beep(){
+  if(!sound)return;
+  try{
+    const ctx=new AudioContext();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=520;g.gain.value=.06;o.start();
+    setTimeout(()=>{o.stop();ctx.close()},120);
+  }catch(e){}
+}
+function renderRoads(){
+  ["bead","bigRoad","eyeRoad","smallRoad","cockRoad"].forEach(id=>{
+    const el=document.getElementById(id);el.innerHTML="";
+    history.slice(-72).forEach((x,i)=>{
+      const c=document.createElement("div");
+      c.className="cell "+x;
+      c.textContent=x==="P"?"闲":x==="B"?"庄":"和";
+      el.appendChild(c);
+    });
+  });
+}
+function initChips(){
+  const box=document.getElementById("chips");
+  chipList.forEach(v=>{
+    const d=document.createElement("div");
+    d.className="chip"+(v===chip?" sel":"");
+    d.textContent=v>=10000?v/10000+"万":v;
+    d.onclick=()=>{chip=v;document.querySelectorAll(".chip").forEach(x=>x.classList.remove("sel"));d.classList.add("sel")};
+    box.appendChild(d);
+  });
+}
+setInterval(()=>{
+  if(!betting)return;
+  time--;
+  document.getElementById("timer").textContent=time;
+  if(time<=0){
+    document.getElementById("result").textContent="开牌中...";
+    playRound();
+  }
+},1000);
+
+initChips();
+update();
+renderRoads();
+</script>
 </body>
 </html>
