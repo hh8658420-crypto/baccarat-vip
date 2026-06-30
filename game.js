@@ -1,86 +1,81 @@
+const suits = ["♠", "♥", "♦", "♣"];
+const values = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
 let money = parseInt(localStorage.getItem("money") || "10000");
 let bet = null;
 let betAmount = 1000;
 
-let shoe = [];
 let playerHand = [];
 let bankerHand = [];
 
-// ===== 生成8副牌 =====
-function initShoe() {
-    shoe = [];
-    for (let d = 0; d < 8; d++) {
-        for (let i = 0; i < 52; i++) {
-            let v = (i % 13) + 1;
-            if (v > 9) v = 0;
-            shoe.push(v);
-        }
-    }
-    shuffle(shoe);
+// ===== 抽牌 =====
+function drawCard() {
+    let v = Math.floor(Math.random() * 13);
+    let s = suits[Math.floor(Math.random() * 4)];
+    return values[v] + s;
 }
 
-// 洗牌
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        let j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
+// ===== 牌值转换 =====
+function cardValue(card){
+    let v = card.replace(/[♠♥♦♣]/,"");
+
+    if(v === "A") return 1;
+    if(["J","Q","K"].includes(v)) return 0;
+    return parseInt(v);
 }
 
-// 抽牌
-function draw() {
-    return shoe.pop();
+// ===== 计算点数 =====
+function score(hand){
+    return hand.reduce((a,b)=>cardValue(a)+cardValue(b),0)%10;
 }
 
-// 点数
-function score(hand) {
-    return hand.reduce((a,b)=>a+b,0)%10;
-}
-
-// 下注
+// ===== 下注 =====
 function placeBet(type){
     bet = type;
     document.getElementById("result").innerText = "已下注：" + type;
 }
 
-// 发牌
-function deal(document.getElementById("playerCards").innerText = playerHand.join(" ");
-document.getElementById("bankerCards").innerText = bankerHand.join(" ");){
+// ===== 发牌核心逻辑 =====
+function deal(){
 
     if(!bet){
         alert("请先下注");
         return;
     }
 
-    playerHand = [draw(), draw()];
-    bankerHand = [draw(), draw()];
+    // 初始牌
+    playerHand = [drawCard(), drawCard()];
+    bankerHand = [drawCard(), drawCard()];
 
     let p = score(playerHand);
-    let b = score(bankerHand);
-
-    // ===== 闲补牌 =====
     let playerThird = null;
+
+    // 闲补牌
     if(p <= 5){
-        playerHand.push(draw());
+        playerHand.push(drawCard());
         playerThird = playerHand[2];
     }
 
-    // ===== 庄补牌（简化核心规则版）=====
-    let bankerThird = null;
-    let bScore = score(bankerHand);
+    let b = score(bankerHand);
 
-    if(bScore <= 2){
-        bankerHand.push(draw());
-    } else if(bScore === 3 && playerThird !== 8){
-        bankerHand.push(draw());
-    } else if(bScore === 4 && [2,3,4,5,6,7].includes(playerThird)){
-        bankerHand.push(draw());
-    } else if(bScore === 5 && [4,5,6,7].includes(playerThird)){
-        bankerHand.push(draw());
-    } else if(bScore === 6 && [6,7].includes(playerThird)){
-        bankerHand.push(draw());
+    // 庄补牌规则（简化但正确逻辑）
+    if(b <= 2){
+        bankerHand.push(drawCard());
+    } 
+    else if(b === 3 && playerThird !== 8){
+        bankerHand.push(drawCard());
+    } 
+    else if(b === 4 && [2,3,4,5,6,7].includes(playerThird)){
+        bankerHand.push(drawCard());
+    } 
+    else if(b === 5 && [4,5,6,7].includes(playerThird)){
+        bankerHand.push(drawCard());
+    } 
+    else if(b === 6 && [6,7].includes(playerThird)){
+        bankerHand.push(drawCard());
     }
 
+    // 最终点数
     let finalP = score(playerHand);
     let finalB = score(bankerHand);
 
@@ -90,6 +85,7 @@ document.getElementById("bankerCards").innerText = bankerHand.join(" ");){
     else if(finalB > finalP) result = "banker";
     else result = "tie";
 
+    // 结算
     if(result === bet){
         money += betAmount;
     } else {
@@ -98,14 +94,16 @@ document.getElementById("bankerCards").innerText = bankerHand.join(" ");){
 
     localStorage.setItem("money", money);
 
+    // UI更新
     document.getElementById("money").innerText = money;
     document.getElementById("result").innerText =
         `结果：${result} | 闲:${finalP} 庄:${finalB}`;
 
+    document.getElementById("playerCards").innerText = playerHand.join(" ");
+    document.getElementById("bankerCards").innerText = bankerHand.join(" ");
+
     bet = null;
 }
 
-// 初始化
-initShoe();
+// ===== 初始化 =====
 document.getElementById("money").innerText = money;
-console.log("update");
