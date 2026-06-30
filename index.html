@@ -1,222 +1,118 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>澳门 VIP บาคาร่า</title>
+
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{
   margin:0;
-  background:radial-gradient(circle at center,#126044,#061912 75%);
+  background:radial-gradient(circle at center,#176345,#041510 80%);
   color:#fff;
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",Arial,sans-serif;
   text-align:center;
   overflow-x:hidden;
 }
-.app{
-  max-width:980px;
-  margin:auto;
-  min-height:100vh;
-  padding:12px;
-}
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:8px;
-}
-.title{
-  font-size:22px;
-  color:#ffd86b;
-  font-weight:800;
-}
-.money{
-  background:#111;
-  border:1px solid #d6b354;
-  border-radius:999px;
-  padding:8px 14px;
-  color:#ffd86b;
-  font-weight:700;
-}
+.app{max-width:980px;margin:auto;min-height:100vh;padding:12px}
+.header{display:flex;justify-content:space-between;align-items:center}
+.title{font-size:22px;color:#ffd86b;font-weight:900}
+.money{background:#111;border:1px solid #d6b354;border-radius:999px;padding:8px 14px;color:#ffd86b;font-weight:800}
 .table{
   margin-top:12px;
   border:4px solid #d6b354;
-  border-radius:28px;
-  padding:16px;
-  background:radial-gradient(circle,#187452,#083322);
-  box-shadow:0 15px 40px rgba(0,0,0,.45), inset 0 0 40px rgba(255,255,255,.06);
+  border-radius:30px;
+  padding:14px;
+  background:radial-gradient(circle,#197a55,#062416 75%);
+  box-shadow:0 15px 45px rgba(0,0,0,.55),inset 0 0 55px rgba(255,216,107,.12);
 }
-.dealer{
-  font-size:46px;
-  margin-bottom:6px;
+.table:before{
+  content:"MACAU VIP";
+  display:block;
+  letter-spacing:7px;
+  color:rgba(255,216,107,.34);
+  font-size:18px;
+  font-weight:900;
 }
-.zones{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
+.dealer-wrap{position:relative;margin:2px auto 10px;width:160px;height:125px}
+.dealer-glow{
+  position:absolute;inset:8px;
+  background:radial-gradient(circle,#ffd86b66,transparent 70%);
+  filter:blur(12px);
+  animation:pulse 2s infinite alternate;
 }
+.dealer-img{position:relative;font-size:74px;z-index:2;animation:floatDealer 2.5s ease-in-out infinite}
+.dealer-name{position:relative;z-index:3;font-size:13px;color:#ffd86b;font-weight:900}
+.zones{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .zone{
-  min-height:142px;
-  background:rgba(0,0,0,.22);
+  min-height:138px;
+  background:rgba(0,0,0,.25);
   border:1px solid rgba(255,255,255,.25);
   border-radius:18px;
   padding:10px;
 }
-.zone h2{
-  margin:0 0 8px;
-  font-size:20px;
-}
-.cards{
-  min-height:64px;
-}
+.zone h2{margin:0 0 8px;font-size:20px}
+.cards{min-height:68px}
 .card{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:48px;
-  height:66px;
-  margin:4px;
-  background:#fff;
-  color:#111;
-  border-radius:9px;
-  font-weight:800;
-  font-size:20px;
-  box-shadow:0 5px 12px rgba(0,0,0,.4);
-  animation:flip .25s ease;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:48px;height:66px;margin:4px;
+  background:#fff;color:#111;border-radius:9px;
+  font-weight:900;font-size:20px;
+  box-shadow:0 6px 14px rgba(0,0,0,.45);
+  animation:flip .28s ease;
 }
 .red{color:#c01628}
-.score{
-  margin-top:6px;
-  font-size:18px;
-  color:#ffd86b;
-  font-weight:700;
-}
-.bet-area{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:10px;
-  margin-top:14px;
-}
+.score{margin-top:6px;font-size:18px;color:#ffd86b;font-weight:800}
+.bet-area{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
 .bet-box{
   border-radius:18px;
   padding:14px 6px;
   font-size:22px;
   font-weight:900;
   border:2px solid rgba(255,255,255,.35);
-  background:linear-gradient(#f6d46b,#b8860b);
+  background:linear-gradient(#ffe58a,#b8860b);
   color:#111;
+  box-shadow:0 0 16px rgba(255,216,107,.45);
 }
-.bet-box.active{
-  outline:4px solid #fff;
-  transform:scale(1.03);
-}
-.chips{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-top:14px;
-}
+.bet-box.active{outline:4px solid #fff;transform:scale(1.03)}
+.chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .chip{
-  width:58px;
-  height:58px;
-  border-radius:50%;
+  width:58px;height:58px;border-radius:50%;
   background:radial-gradient(circle,#fff 0 28%,#d71920 29% 55%,#fff 56% 62%,#111 63%);
-  color:#111;
-  font-weight:900;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  color:#111;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
   box-shadow:0 5px 12px rgba(0,0,0,.45);
 }
-.chip.active{
-  transform:translateY(-5px);
-  outline:3px solid #ffd86b;
-}
-.actions{
-  margin-top:14px;
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
-}
-button{
-  border:0;
-  border-radius:12px;
-  padding:12px 18px;
-  font-size:18px;
-  font-weight:800;
-}
-.deal{
-  background:#ffd86b;
-  color:#111;
-}
-.reset{
-  background:#222;
-  color:#fff;
-  border:1px solid #777;
-}
-.result{
-  min-height:52px;
-  margin-top:12px;
-  font-size:18px;
-  font-weight:800;
-  color:#fff;
-}
-.stats{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:8px;
-  margin-top:10px;
-}
-.stat{
-  background:rgba(0,0,0,.28);
-  border-radius:12px;
-  padding:8px;
-  font-size:14px;
-}
-.road{
-  margin-top:12px;
-  background:rgba(255,255,255,.9);
-  border-radius:14px;
-  padding:8px;
-  color:#111;
-  text-align:left;
-}
-.road-title{
-  font-weight:900;
-  margin-bottom:6px;
-}
-.road-grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:4px;
-}
+.chip.active{transform:translateY(-5px);outline:3px solid #ffd86b}
+.actions{margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+button{border:0;border-radius:12px;padding:12px 18px;font-size:18px;font-weight:900}
+.deal{background:#ffd86b;color:#111;box-shadow:0 0 24px rgba(255,216,107,.65)}
+.reset{background:#222;color:#fff;border:1px solid #777}
+.result{min-height:52px;margin-top:12px;font-size:18px;font-weight:900}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.stat{background:rgba(0,0,0,.32);border-radius:12px;padding:8px;font-size:14px}
+.road{margin-top:12px;background:rgba(255,255,255,.92);border-radius:14px;padding:8px;color:#111;text-align:left}
+.road-title{font-weight:900;margin-bottom:6px}
+.road-grid{display:flex;flex-wrap:wrap;gap:4px}
 .dot{
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:900;
-  color:#fff;
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:900;color:#fff;
 }
-.player{background:#1769ff}
-.banker{background:#d71920}
-.tie{background:#17a34a}
-@keyframes flip{
-  from{transform:rotateY(90deg);opacity:.2}
-  to{transform:rotateY(0);opacity:1}
-}
+.player{background:#1769ff}.banker{background:#d71920}.tie{background:#17a34a}
+
+@keyframes flip{from{transform:rotateY(90deg);opacity:.2}to{transform:rotateY(0);opacity:1}}
+@keyframes pulse{from{opacity:.35;transform:scale(.95)}to{opacity:1;transform:scale(1.15)}}
+@keyframes floatDealer{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
 @media (orientation:landscape){
   .app{padding:8px 18px}
-  .dealer{font-size:38px}
-  .table{padding:12px}
-  .zone{min-height:116px}
-  .card{width:44px;height:60px}
+  .dealer-wrap{height:96px}
+  .dealer-img{font-size:56px}
+  .table{padding:10px}
+  .zone{min-height:112px}
+  .card{width:44px;height:58px}
 }
 </style>
 </head>
@@ -229,7 +125,11 @@ button{
   </div>
 
   <div class="table">
-    <div class="dealer">👩‍💼</div>
+    <div class="dealer-wrap">
+      <div class="dealer-glow"></div>
+      <div class="dealer-img">👩🏻‍💼</div>
+      <div class="dealer-name">VIP 荷官</div>
+    </div>
 
     <div class="zones">
       <div class="zone">
@@ -237,7 +137,6 @@ button{
         <div id="playerCards" class="cards"></div>
         <div class="score">点数：<span id="playerScore">-</span></div>
       </div>
-
       <div class="zone">
         <h2>庄 BANKER</h2>
         <div id="bankerCards" class="cards"></div>
@@ -280,26 +179,26 @@ button{
 </div>
 
 <script>
-const suits = ["♠","♥","♦","♣"];
-const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const suits=["♠","♥","♦","♣"];
+const ranks=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
-let money = Number(localStorage.getItem("vip_money") || 10000);
-let betType = null;
-let betAmount = 1000;
-let shoe = [];
-let history = JSON.parse(localStorage.getItem("vip_history") || "[]");
+let money=Number(localStorage.getItem("vip_money")||10000);
+let betType=null;
+let betAmount=1000;
+let shoe=[];
+let history=JSON.parse(localStorage.getItem("vip_history")||"[]");
 
 function save(){
-  localStorage.setItem("vip_money", money);
-  localStorage.setItem("vip_history", JSON.stringify(history));
+  localStorage.setItem("vip_money",money);
+  localStorage.setItem("vip_history",JSON.stringify(history));
 }
 
 function initShoe(){
-  shoe = [];
-  for(let d=0; d<8; d++){
+  shoe=[];
+  for(let d=0;d<8;d++){
     for(let s of suits){
       for(let r of ranks){
-        shoe.push({rank:r, suit:s});
+        shoe.push({rank:r,suit:s});
       }
     }
   }
@@ -310,186 +209,163 @@ function initShoe(){
 }
 
 function draw(){
-  if(shoe.length < 20) initShoe();
+  if(shoe.length<20)initShoe();
   return shoe.pop();
 }
 
-function cardValue(card){
-  if(card.rank === "A") return 1;
-  if(["10","J","Q","K"].includes(card.rank)) return 0;
-  return Number(card.rank);
+function cardValue(c){
+  if(c.rank==="A")return 1;
+  if(["10","J","Q","K"].includes(c.rank))return 0;
+  return Number(c.rank);
 }
 
 function score(hand){
   return hand.reduce((sum,c)=>sum+cardValue(c),0)%10;
 }
 
-function thirdValue(card){
-  return card ? cardValue(card) : null;
-}
-
-function renderCards(id, hand){
-  document.getElementById(id).innerHTML = hand.map(c=>{
-    const red = c.suit==="♥" || c.suit==="♦" ? "red" : "";
+function renderCards(id,hand){
+  document.getElementById(id).innerHTML=hand.map(c=>{
+    const red=c.suit==="♥"||c.suit==="♦"?"red":"";
     return `<span class="card ${red}">${c.rank}${c.suit}</span>`;
   }).join("");
 }
 
 function selectChip(amount){
-  betAmount = amount;
+  betAmount=amount;
   document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
   document.getElementById("chip-"+amount).classList.add("active");
-  document.getElementById("result").innerText = "已选择筹码：" + amount;
+  document.getElementById("result").innerText="已选择筹码："+amount;
 }
 
 function placeBet(type){
-  betType = type;
+  betType=type;
   document.querySelectorAll(".bet-box").forEach(x=>x.classList.remove("active"));
   document.getElementById("bet-"+type).classList.add("active");
-
-  const name = type==="player" ? "闲" : type==="banker" ? "庄" : "和";
-  document.getElementById("result").innerText = `已下注：${name} ${betAmount}`;
+  const name=type==="player"?"闲":type==="banker"?"庄":"和";
+  document.getElementById("result").innerText=`已下注：${name} ${betAmount}`;
 }
 
 function deal(){
-  if(!betType){
-    alert("请先选择庄、闲或和");
-    return;
-  }
+  if(!betType){alert("请先选择庄、闲或和");return}
+  if(money<betAmount){alert("资金不足");return}
 
-  if(money < betAmount){
-    alert("资金不足");
-    return;
-  }
+  document.getElementById("result").innerText="发牌中...";
+  document.getElementById("playerCards").innerHTML="";
+  document.getElementById("bankerCards").innerHTML="";
+  document.getElementById("playerScore").innerText="-";
+  document.getElementById("bankerScore").innerText="-";
 
-  document.getElementById("result").innerText = "发牌中...";
-  document.getElementById("playerCards").innerHTML = "";
-  document.getElementById("bankerCards").innerHTML = "";
-  document.getElementById("playerScore").innerText = "-";
-  document.getElementById("bankerScore").innerText = "-";
+  let player=[];
+  let banker=[];
 
-  let player = [];
-  let banker = [];
-
-  setTimeout(()=>{ player.push(draw()); renderCards("playerCards", player); }, 250);
-  setTimeout(()=>{ banker.push(draw()); renderCards("bankerCards", banker); }, 550);
-  setTimeout(()=>{ player.push(draw()); renderCards("playerCards", player); }, 850);
-  setTimeout(()=>{ banker.push(draw()); renderCards("bankerCards", banker); }, 1150);
-
-  setTimeout(()=>{
-    resolveRound(player, banker);
-  }, 1500);
+  setTimeout(()=>{player.push(draw());renderCards("playerCards",player)},250);
+  setTimeout(()=>{banker.push(draw());renderCards("bankerCards",banker)},550);
+  setTimeout(()=>{player.push(draw());renderCards("playerCards",player)},850);
+  setTimeout(()=>{banker.push(draw());renderCards("bankerCards",banker)},1150);
+  setTimeout(()=>resolveRound(player,banker),1500);
 }
 
-function resolveRound(player, banker){
-  let pScore = score(player);
-  let bScore = score(banker);
-
-  let natural = pScore >= 8 || bScore >= 8;
-  let playerThird = null;
+function resolveRound(player,banker){
+  let pScore=score(player);
+  let bScore=score(banker);
+  let natural=pScore>=8||bScore>=8;
+  let playerThird=null;
 
   if(!natural){
-    if(pScore <= 5){
-      playerThird = draw();
+    if(pScore<=5){
+      playerThird=draw();
       player.push(playerThird);
     }
 
-    const b = score(banker);
-    const pv = thirdValue(playerThird);
+    const b=score(banker);
+    const pv=playerThird?cardValue(playerThird):null;
 
-    if(playerThird === null){
-      if(b <= 5) banker.push(draw());
+    if(playerThird===null){
+      if(b<=5)banker.push(draw());
     }else{
-      if(b <= 2) banker.push(draw());
-      else if(b === 3 && pv !== 8) banker.push(draw());
-      else if(b === 4 && [2,3,4,5,6,7].includes(pv)) banker.push(draw());
-      else if(b === 5 && [4,5,6,7].includes(pv)) banker.push(draw());
-      else if(b === 6 && [6,7].includes(pv)) banker.push(draw());
+      if(b<=2)banker.push(draw());
+      else if(b===3&&pv!==8)banker.push(draw());
+      else if(b===4&&[2,3,4,5,6,7].includes(pv))banker.push(draw());
+      else if(b===5&&[4,5,6,7].includes(pv))banker.push(draw());
+      else if(b===6&&[6,7].includes(pv))banker.push(draw());
     }
   }
 
-  renderCards("playerCards", player);
-  renderCards("bankerCards", banker);
+  renderCards("playerCards",player);
+  renderCards("bankerCards",banker);
 
-  pScore = score(player);
-  bScore = score(banker);
+  pScore=score(player);
+  bScore=score(banker);
 
-  document.getElementById("playerScore").innerText = pScore;
-  document.getElementById("bankerScore").innerText = bScore;
+  document.getElementById("playerScore").innerText=pScore;
+  document.getElementById("bankerScore").innerText=bScore;
 
-  let result = "tie";
-  if(pScore > bScore) result = "player";
-  else if(bScore > pScore) result = "banker";
+  let result="tie";
+  if(pScore>bScore)result="player";
+  else if(bScore>pScore)result="banker";
 
-  settle(result, pScore, bScore);
+  settle(result,pScore,bScore);
 }
 
-function settle(result, pScore, bScore){
-  let winText = "";
-  let profit = 0;
+function settle(result,pScore,bScore){
+  let profit=0;
+  let text="";
 
-  if(result === "tie"){
-    if(betType === "tie"){
-      profit = betAmount * 8;
-      winText = "和局命中，赢 " + profit;
+  if(result==="tie"){
+    if(betType==="tie"){
+      profit=betAmount*8;
+      text="和局命中，赢 +"+profit;
     }else{
-      profit = 0;
-      winText = "和局，庄/闲下注退回";
+      profit=0;
+      text="和局，庄/闲退回";
     }
-  }else if(result === betType){
-    if(result === "banker"){
-      profit = Math.floor(betAmount * 0.95);
-    }else{
-      profit = betAmount;
-    }
-    winText = "赢了 +" + profit;
+  }else if(result===betType){
+    profit=result==="banker"?Math.floor(betAmount*0.95):betAmount;
+    text="赢了 +"+profit;
   }else{
-    profit = -betAmount;
-    winText = "输了 -" + betAmount;
+    profit=-betAmount;
+    text="输了 -"+betAmount;
   }
 
-  money += profit;
-
+  money+=profit;
   history.push(result);
-  if(history.length > 80) history.shift();
+  if(history.length>80)history.shift();
 
   save();
   updateUI();
 
-  const resultName = result==="player" ? "闲胜" : result==="banker" ? "庄胜" : "和局";
-  document.getElementById("result").innerText =
-    `${resultName} | 闲:${pScore} 庄:${bScore} | ${winText}`;
+  const name=result==="player"?"闲胜":result==="banker"?"庄胜":"和局";
+  document.getElementById("result").innerText=`${name} | 闲:${pScore} 庄:${bScore} | ${text}`;
 
-  betType = null;
+  betType=null;
   document.querySelectorAll(".bet-box").forEach(x=>x.classList.remove("active"));
 }
 
 function updateUI(){
-  document.getElementById("money").innerText = money;
+  document.getElementById("money").innerText=money;
+  document.getElementById("rounds").innerText=history.length;
+  document.getElementById("pWins").innerText=history.filter(x=>x==="player").length;
+  document.getElementById("bWins").innerText=history.filter(x=>x==="banker").length;
+  document.getElementById("tWins").innerText=history.filter(x=>x==="tie").length;
 
-  document.getElementById("rounds").innerText = history.length;
-  document.getElementById("pWins").innerText = history.filter(x=>x==="player").length;
-  document.getElementById("bWins").innerText = history.filter(x=>x==="banker").length;
-  document.getElementById("tWins").innerText = history.filter(x=>x==="tie").length;
-
-  document.getElementById("road").innerHTML = history.map(x=>{
-    const text = x==="player" ? "闲" : x==="banker" ? "庄" : "和";
-    return `<div class="dot ${x}">${text}</div>`;
+  document.getElementById("road").innerHTML=history.map(x=>{
+    const t=x==="player"?"闲":x==="banker"?"庄":"和";
+    return `<div class="dot ${x}">${t}</div>`;
   }).join("");
 }
 
 function resetGame(){
   if(confirm("确定重置资金和路单吗？")){
-    money = 10000;
-    history = [];
+    money=10000;
+    history=[];
     initShoe();
     save();
     updateUI();
-    document.getElementById("playerCards").innerHTML = "";
-    document.getElementById("bankerCards").innerHTML = "";
-    document.getElementById("playerScore").innerText = "-";
-    document.getElementById("bankerScore").innerText = "-";
-    document.getElementById("result").innerText = "已重置";
+    document.getElementById("playerCards").innerHTML="";
+    document.getElementById("bankerCards").innerHTML="";
+    document.getElementById("playerScore").innerText="-";
+    document.getElementById("bankerScore").innerText="-";
+    document.getElementById("result").innerText="已重置";
   }
 }
 
