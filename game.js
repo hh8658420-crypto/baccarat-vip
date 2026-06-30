@@ -44,7 +44,8 @@ function placeBet(type){
 }
 
 // 发牌
-function deal(){
+function deal(document.getElementById("playerCards").innerText = playerHand.join(" ");
+document.getElementById("bankerCards").innerText = bankerHand.join(" ");){
 
     if(!bet){
         alert("请先下注");
