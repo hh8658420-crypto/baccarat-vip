@@ -1,10 +1,10 @@
 {
-  "name": "VIP百家乐",
+  "name": "VIP真人百家乐",
   "short_name": "VIP百家乐",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#050b08",
-  "theme_color": "#050b08",
-  "orientation": "landscape",
+  "background_color": "#4b0710",
+  "theme_color": "#4b0710",
+  "orientation": "portrait",
   "icons": []
 }
