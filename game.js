@@ -1,388 +1,285 @@
-const suits = ["♠", "♥", "♦", "♣"];
-const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const suits=["♠","♥","♦","♣"];
+const ranks=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
-let money = Number(localStorage.getItem("vip_money") || 10000);
-let history = JSON.parse(localStorage.getItem("vip_history") || "[]");
-let betHistory = JSON.parse(localStorage.getItem("vip_bet_history") || "[]");
-let soundOn = localStorage.getItem("vip_sound") !== "off";
+let money=Number(localStorage.getItem("live_money")||10000);
+let history=JSON.parse(localStorage.getItem("live_history")||"[]");
+let betRecord=JSON.parse(localStorage.getItem("live_bets")||"[]");
+let soundOn=localStorage.getItem("live_sound")!=="off";
 
-let shoe = [];
-let betType = null;
-let lastBetType = null;
-let betAmount = 1000;
-let lastBetAmount = 1000;
-let locked = false;
+let shoe=[];
+let betType=null;
+let lastBetType=null;
+let betAmount=1000;
+let lastBetAmount=1000;
+let locked=false;
 
-const el = {
-  money: document.getElementById("money"),
-  playerCards: document.getElementById("playerCards"),
-  bankerCards: document.getElementById("bankerCards"),
-  playerScore: document.getElementById("playerScore"),
-  bankerScore: document.getElementById("bankerScore"),
-  message: document.getElementById("message"),
-  table: document.getElementById("table"),
-  soundBtn: document.getElementById("soundBtn"),
-  dealBtn: document.getElementById("dealBtn"),
-  repeatBtn: document.getElementById("repeatBtn"),
-  resetBtn: document.getElementById("resetBtn"),
-  rounds: document.getElementById("rounds"),
-  pWins: document.getElementById("pWins"),
-  bWins: document.getElementById("bWins"),
-  tWins: document.getElementById("tWins"),
-  winRate: document.getElementById("winRate"),
-  streak: document.getElementById("streak"),
-  beadRoad: document.getElementById("beadRoad"),
-  bigRoad: document.getElementById("bigRoad")
+const $=id=>document.getElementById(id);
+
+const el={
+  money:$("money"),
+  playerCards:$("playerCards"),
+  bankerCards:$("bankerCards"),
+  message:$("message"),
+  bWins:$("bWins"),
+  pWins:$("pWins"),
+  tWins:$("tWins"),
+  rounds:$("rounds"),
+  winRate:$("winRate"),
+  beadRoad:$("beadRoad"),
+  bigRoad:$("bigRoad"),
+  soundBtn:$("soundBtn"),
+  dealBtn:$("dealBtn"),
+  repeatBtn:$("repeatBtn"),
+  cancelBtn:$("cancelBtn")
 };
 
 function save(){
-  localStorage.setItem("vip_money", String(money));
-  localStorage.setItem("vip_history", JSON.stringify(history));
-  localStorage.setItem("vip_bet_history", JSON.stringify(betHistory));
-  localStorage.setItem("vip_sound", soundOn ? "on" : "off");
+  localStorage.setItem("live_money",money);
+  localStorage.setItem("live_history",JSON.stringify(history));
+  localStorage.setItem("live_bets",JSON.stringify(betRecord));
+  localStorage.setItem("live_sound",soundOn?"on":"off");
 }
 
-function beep(freq = 520, duration = 0.07){
-  if(!soundOn) return;
-
+function beep(freq=520,duration=.06){
+  if(!soundOn)return;
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.frequency.value = freq;
-    gain.gain.value = 0.055;
-
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.frequency.value=freq;
+    gain.gain.value=.045;
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start();
-    osc.stop(ctx.currentTime + duration);
+    osc.stop(ctx.currentTime+duration);
   }catch(e){}
 }
 
 function initShoe(){
-  shoe = [];
-
-  for(let d = 0; d < 8; d++){
-    for(const suit of suits){
-      for(const rank of ranks){
-        shoe.push({ rank, suit });
+  shoe=[];
+  for(let d=0;d<8;d++){
+    for(const s of suits){
+      for(const r of ranks){
+        shoe.push({rank:r,suit:s});
       }
     }
   }
-
-  for(let i = shoe.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
+  for(let i=shoe.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [shoe[i],shoe[j]]=[shoe[j],shoe[i]];
   }
 }
 
 function draw(){
-  if(shoe.length < 20){
-    initShoe();
-    showMessage("重新洗牌");
-  }
-
+  if(shoe.length<20)initShoe();
   return shoe.pop();
 }
 
-function cardValue(card){
-  if(card.rank === "A") return 1;
-  if(["10", "J", "Q", "K"].includes(card.rank)) return 0;
-  return Number(card.rank);
+function cardValue(c){
+  if(c.rank==="A")return 1;
+  if(["10","J","Q","K"].includes(c.rank))return 0;
+  return Number(c.rank);
 }
 
 function score(hand){
-  return hand.reduce((sum, card) => sum + cardValue(card), 0) % 10;
+  return hand.reduce((s,c)=>s+cardValue(c),0)%10;
 }
 
-function renderCards(target, hand){
-  target.innerHTML = hand.map(card => {
-    const red = card.suit === "♥" || card.suit === "♦" ? "red" : "";
-    return `<span class="card ${red}">${card.rank}${card.suit}</span>`;
+function renderCards(target,hand){
+  target.innerHTML=hand.map(c=>{
+    const red=c.suit==="♥"||c.suit==="♦"?"red":"";
+    return `<span class="card ${red}">${c.rank}${c.suit}</span>`;
   }).join("");
 }
 
-function showMessage(text){
-  el.message.textContent = text;
-}
+function msg(t){el.message.textContent=t}
 
 function selectChip(amount){
-  if(locked) return;
-
-  betAmount = amount;
-
-  document.querySelectorAll(".chip").forEach(btn => btn.classList.remove("active"));
+  if(locked)return;
+  betAmount=amount;
+  document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
   document.querySelector(`[data-chip="${amount}"]`).classList.add("active");
-
-  showMessage(`已选择筹码：${amount}`);
-  beep(450, 0.05);
+  msg("已选择筹码："+amount);
+  beep(440);
 }
 
 function placeBet(type){
-  if(locked) return;
-
-  betType = type;
-  lastBetType = type;
-  lastBetAmount = betAmount;
-
-  document.querySelectorAll(".betZone").forEach(btn => btn.classList.remove("active"));
+  if(locked)return;
+  betType=type;
+  lastBetType=type;
+  lastBetAmount=betAmount;
+  document.querySelectorAll(".bet-box").forEach(x=>x.classList.remove("active"));
   document.querySelector(`[data-bet="${type}"]`).classList.add("active");
-
-  const name = type === "player" ? "闲" : type === "banker" ? "庄" : "和";
-  showMessage(`已下注：${name} ${betAmount}`);
-
-  beep(650, 0.05);
+  const n=type==="player"?"闲":type==="banker"?"庄":"和";
+  msg(`已下注：${n} ${betAmount}`);
+  beep(660);
 }
 
 function repeatBet(){
-  if(locked) return;
-  if(!lastBetType){
-    showMessage("还没有上一局下注");
-    return;
-  }
-
-  betAmount = lastBetAmount;
+  if(locked)return;
+  if(!lastBetType){msg("暂无上一局下注");return}
+  betAmount=lastBetAmount;
   selectChip(betAmount);
   placeBet(lastBetType);
 }
 
-function clearRoundUI(){
-  el.playerCards.innerHTML = "";
-  el.bankerCards.innerHTML = "";
-  el.playerScore.textContent = "-";
-  el.bankerScore.textContent = "-";
+function cancelBet(){
+  if(locked)return;
+  betType=null;
+  document.querySelectorAll(".bet-box").forEach(x=>x.classList.remove("active"));
+  msg("已取消下注");
 }
 
 function deal(){
-  if(locked) return;
+  if(locked)return;
+  if(!betType){alert("请先下注");return}
+  if(money<betAmount){alert("资金不足");return}
 
-  if(!betType){
-    alert("请先选择庄、闲或和");
-    return;
-  }
+  locked=true;
+  el.playerCards.innerHTML="";
+  el.bankerCards.innerHTML="";
+  msg("发牌中...");
 
-  if(money < betAmount){
-    alert("资金不足");
-    return;
-  }
+  let p=[],b=[];
 
-  locked = true;
-  clearRoundUI();
-  showMessage("发牌中...");
-
-  const player = [];
-  const banker = [];
-
-  setTimeout(() => {
-    player.push(draw());
-    renderCards(el.playerCards, player);
-    beep(520, 0.05);
-  }, 220);
-
-  setTimeout(() => {
-    banker.push(draw());
-    renderCards(el.bankerCards, banker);
-    beep(540, 0.05);
-  }, 520);
-
-  setTimeout(() => {
-    player.push(draw());
-    renderCards(el.playerCards, player);
-    beep(560, 0.05);
-  }, 820);
-
-  setTimeout(() => {
-    banker.push(draw());
-    renderCards(el.bankerCards, banker);
-    beep(580, 0.05);
-  }, 1120);
-
-  setTimeout(() => resolveRound(player, banker), 1450);
+  setTimeout(()=>{p.push(draw());renderCards(el.playerCards,p);beep(520)},220);
+  setTimeout(()=>{b.push(draw());renderCards(el.bankerCards,b);beep(540)},520);
+  setTimeout(()=>{p.push(draw());renderCards(el.playerCards,p);beep(560)},820);
+  setTimeout(()=>{b.push(draw());renderCards(el.bankerCards,b);beep(580)},1120);
+  setTimeout(()=>resolveRound(p,b),1450);
 }
 
-function resolveRound(player, banker){
-  let pScore = score(player);
-  let bScore = score(banker);
-
-  const natural = pScore >= 8 || bScore >= 8;
-  let playerThird = null;
+function resolveRound(p,b){
+  let ps=score(p),bs=score(b);
+  const natural=ps>=8||bs>=8;
+  let p3=null;
 
   if(!natural){
-    if(pScore <= 5){
-      playerThird = draw();
-      player.push(playerThird);
-      renderCards(el.playerCards, player);
-      beep(630, 0.05);
+    if(ps<=5){
+      p3=draw();
+      p.push(p3);
+      renderCards(el.playerCards,p);
+      beep(620);
     }
 
-    const b = score(banker);
-    const pv = playerThird ? cardValue(playerThird) : null;
+    const bankerScore=score(b);
+    const pv=p3?cardValue(p3):null;
 
-    if(playerThird === null){
-      if(b <= 5){
-        banker.push(draw());
-        beep(650, 0.05);
-      }
+    if(p3===null){
+      if(bankerScore<=5)b.push(draw());
     }else{
-      if(b <= 2) banker.push(draw());
-      else if(b === 3 && pv !== 8) banker.push(draw());
-      else if(b === 4 && [2,3,4,5,6,7].includes(pv)) banker.push(draw());
-      else if(b === 5 && [4,5,6,7].includes(pv)) banker.push(draw());
-      else if(b === 6 && [6,7].includes(pv)) banker.push(draw());
+      if(bankerScore<=2)b.push(draw());
+      else if(bankerScore===3&&pv!==8)b.push(draw());
+      else if(bankerScore===4&&[2,3,4,5,6,7].includes(pv))b.push(draw());
+      else if(bankerScore===5&&[4,5,6,7].includes(pv))b.push(draw());
+      else if(bankerScore===6&&[6,7].includes(pv))b.push(draw());
     }
   }
 
-  renderCards(el.playerCards, player);
-  renderCards(el.bankerCards, banker);
+  renderCards(el.playerCards,p);
+  renderCards(el.bankerCards,b);
 
-  pScore = score(player);
-  bScore = score(banker);
+  ps=score(p);bs=score(b);
 
-  el.playerScore.textContent = pScore;
-  el.bankerScore.textContent = bScore;
+  let result="tie";
+  if(ps>bs)result="player";
+  else if(bs>ps)result="banker";
 
-  let result = "tie";
-
-  if(pScore > bScore) result = "player";
-  else if(bScore > pScore) result = "banker";
-
-  settle(result, pScore, bScore);
+  settle(result,ps,bs);
 }
 
-function settle(result, pScore, bScore){
-  let profit = 0;
-  let detail = "";
+function settle(result,ps,bs){
+  let profit=0;
+  let text="";
 
-  if(result === "tie"){
-    if(betType === "tie"){
-      profit = betAmount * 8;
-      detail = `和局命中 +${profit}`;
+  if(result==="tie"){
+    if(betType==="tie"){
+      profit=betAmount*8;
+      text=`和局命中 +${profit}`;
     }else{
-      profit = 0;
-      detail = "和局，庄/闲退回";
+      profit=0;
+      text="和局退回";
     }
-  }else if(result === betType){
-    if(result === "banker"){
-      profit = Math.floor(betAmount * 0.95);
-    }else{
-      profit = betAmount;
-    }
-
-    detail = `赢了 +${profit}`;
+  }else if(result===betType){
+    profit=result==="banker"?Math.floor(betAmount*.95):betAmount;
+    text=`赢了 +${profit}`;
   }else{
-    profit = -betAmount;
-    detail = `输了 ${profit}`;
+    profit=-betAmount;
+    text=`输了 ${profit}`;
   }
 
-  money += profit;
-
+  money+=profit;
   history.push(result);
-  betHistory.push(profit > 0 ? "win" : profit < 0 ? "lose" : "push");
+  betRecord.push(profit>0?"win":profit<0?"lose":"push");
 
-  if(history.length > 100) history.shift();
-  if(betHistory.length > 100) betHistory.shift();
+  if(history.length>80)history.shift();
+  if(betRecord.length>80)betRecord.shift();
 
-  const resultName = result === "player" ? "闲胜" : result === "banker" ? "庄胜" : "和局";
+  const rn=result==="player"?"闲胜":result==="banker"?"庄胜":"和局";
+  msg(`${rn}｜闲:${ps} 庄:${bs}｜${text}`);
 
-  showMessage(`${resultName}｜闲:${pScore} 庄:${bScore}｜${detail}`);
-
-  if(profit > 0){
-    el.table.classList.add("winFlash");
-    beep(920, 0.09);
-    setTimeout(() => el.table.classList.remove("winFlash"), 850);
-  }else{
-    beep(260, 0.08);
-  }
-
-  betType = null;
-  locked = false;
-
-  document.querySelectorAll(".betZone").forEach(btn => btn.classList.remove("active"));
+  betType=null;
+  locked=false;
+  document.querySelectorAll(".bet-box").forEach(x=>x.classList.remove("active"));
 
   save();
   updateUI();
-}
-
-function currentStreak(){
-  let streak = 0;
-
-  for(let i = betHistory.length - 1; i >= 0; i--){
-    if(betHistory[i] === "win") streak++;
-    else if(betHistory[i] === "lose") break;
-  }
-
-  return streak;
-}
-
-function updateRoads(){
-  el.beadRoad.innerHTML = history.map(item => {
-    const text = item === "player" ? "闲" : item === "banker" ? "庄" : "和";
-    return `<div class="dot ${item}">${text}</div>`;
-  }).join("");
-
-  el.bigRoad.innerHTML = history.map(item => {
-    return `<div class="bigDot ${item}"></div>`;
-  }).join("");
 }
 
 function updateUI(){
-  el.money.textContent = money;
-  el.soundBtn.textContent = soundOn ? "🔊" : "🔇";
+  el.money.textContent=money;
+  el.soundBtn.textContent=soundOn?"🔊":"🔇";
+  el.rounds.textContent=history.length;
+  el.bWins.textContent=history.filter(x=>x==="banker").length;
+  el.pWins.textContent=history.filter(x=>x==="player").length;
+  el.tWins.textContent=history.filter(x=>x==="tie").length;
 
-  el.rounds.textContent = history.length;
-  el.pWins.textContent = history.filter(x => x === "player").length;
-  el.bWins.textContent = history.filter(x => x === "banker").length;
-  el.tWins.textContent = history.filter(x => x === "tie").length;
+  const wins=betRecord.filter(x=>x==="win").length;
+  const losses=betRecord.filter(x=>x==="lose").length;
+  const total=wins+losses;
+  el.winRate.textContent=total?Math.round(wins/total*100)+"%":"0%";
 
-  const wins = betHistory.filter(x => x === "win").length;
-  const losses = betHistory.filter(x => x === "lose").length;
-  const total = wins + losses;
+  el.beadRoad.innerHTML=history.map(x=>{
+    const t=x==="banker"?"庄":x==="player"?"闲":"和";
+    return `<div class="dot ${x}">${t}</div>`;
+  }).join("");
 
-  el.winRate.textContent = total ? Math.round(wins / total * 100) + "%" : "0%";
-  el.streak.textContent = currentStreak();
-
-  updateRoads();
-}
-
-function resetGame(){
-  if(!confirm("确定重置资金、路单和统计吗？")) return;
-
-  money = 10000;
-  history = [];
-  betHistory = [];
-  betType = null;
-  locked = false;
-
-  initShoe();
-  clearRoundUI();
-  save();
-  updateUI();
-
-  document.querySelectorAll(".betZone").forEach(btn => btn.classList.remove("active"));
-  showMessage("已重置");
+  el.bigRoad.innerHTML=history.map(x=>{
+    return `<div class="big-dot ${x}"></div>`;
+  }).join("");
 }
 
 function toggleSound(){
-  soundOn = !soundOn;
+  soundOn=!soundOn;
   save();
   updateUI();
-  beep(780, 0.05);
+  beep(800);
 }
 
-document.querySelectorAll(".chip").forEach(btn => {
-  btn.addEventListener("click", () => selectChip(Number(btn.dataset.chip)));
-});
+function resetAll(){
+  money=10000;
+  history=[];
+  betRecord=[];
+  betType=null;
+  locked=false;
+  initShoe();
+  save();
+  updateUI();
+  el.playerCards.innerHTML="";
+  el.bankerCards.innerHTML="";
+  msg("已重置");
+}
 
-document.querySelectorAll(".betZone").forEach(btn => {
-  btn.addEventListener("click", () => placeBet(btn.dataset.bet));
+document.querySelectorAll(".chip").forEach(x=>{
+  x.addEventListener("click",()=>selectChip(Number(x.dataset.chip)));
 });
-
-el.dealBtn.addEventListener("click", deal);
-el.repeatBtn.addEventListener("click", repeatBet);
-el.resetBtn.addEventListener("click", resetGame);
-el.soundBtn.addEventListener("click", toggleSound);
+document.querySelectorAll(".bet-box").forEach(x=>{
+  x.addEventListener("click",()=>placeBet(x.dataset.bet));
+});
+el.dealBtn.addEventListener("click",deal);
+el.repeatBtn.addEventListener("click",repeatBet);
+el.cancelBtn.addEventListener("click",cancelBet);
+el.soundBtn.addEventListener("click",toggleSound);
 
 initShoe();
 updateUI();
