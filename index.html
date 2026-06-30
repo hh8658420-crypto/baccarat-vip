@@ -1,107 +1,127 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="VIP百家乐" />
-<meta name="theme-color" content="#050b08" />
-<link rel="manifest" href="manifest.json" />
-<link rel="stylesheet" href="style.css" />
-<title>澳门 VIP บาคาร่า</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VIP百家乐">
+<meta name="theme-color" content="#4b0710">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+<title>VIP 真人百家乐</title>
 </head>
 
 <body>
-<div class="app">
+<div class="phone">
+
   <header class="topbar">
-    <div class="brand">
-      <div class="logo">♛</div>
-      <div>
-        <div class="title">MACAU VIP BACCARAT</div>
-        <div class="sub">娱乐概率模拟器 · 无真实博彩</div>
-      </div>
-    </div>
-
-    <div class="wallet">
-      <span>资金</span>
-      <strong id="money">10000</strong>
-    </div>
-
-    <button class="soundBtn" id="soundBtn">🔊</button>
+    <button class="icon">×</button>
+    <button class="icon">↻</button>
+    <div class="room-title">VIP真人百家乐</div>
+    <div class="balance">💰 <span id="money">10000</span></div>
   </header>
 
-  <main class="casino">
-    <section class="dealerStage">
-      <div class="light left"></div>
-      <div class="light right"></div>
-      <div class="dealer">
-        <div class="dealerFace">👩🏻‍💼</div>
-        <div class="dealerName">VIP 荷官</div>
+  <section class="dealer-screen">
+    <div class="casino-bg"></div>
+    <div class="dealer-card">
+      <div class="dealer-face">👩🏻‍💼</div>
+      <div class="dealer-tag">原创VIP荷官</div>
+    </div>
+
+    <div class="table-sign">
+      <b>VIP LIVE CASINO</b>
+      <span>娱乐概率模拟器</span>
+    </div>
+
+    <div class="hand-display">
+      <div>
+        <span>闲牌</span>
+        <div id="playerCards" class="cards"></div>
       </div>
-    </section>
-
-    <section class="table">
-      <div class="tableLogo">MACAU VIP</div>
-
-      <div class="hands">
-        <div class="handPanel playerPanel">
-          <div class="handTitle">闲 PLAYER</div>
-          <div id="playerCards" class="cards"></div>
-          <div class="score">点数 <span id="playerScore">-</span></div>
-        </div>
-
-        <div class="handPanel bankerPanel">
-          <div class="handTitle">庄 BANKER</div>
-          <div id="bankerCards" class="cards"></div>
-          <div class="score">点数 <span id="bankerScore">-</span></div>
-        </div>
+      <div>
+        <span>庄牌</span>
+        <div id="bankerCards" class="cards"></div>
       </div>
+    </div>
+  </section>
 
-      <div class="betZones">
-        <button class="betZone blue" data-bet="player">闲<br><span>1赔1</span></button>
-        <button class="betZone gold" data-bet="tie">和<br><span>1赔8</span></button>
-        <button class="betZone red" data-bet="banker">庄<br><span>抽水5%</span></button>
-      </div>
+  <section class="bet-panel">
+    <div class="round-info">
+      <span>局号：SIM-2026</span>
+      <strong id="countdown">下注中</strong>
+      <span>限红：100-100000</span>
+    </div>
 
-      <div class="chips">
-        <button class="chip" data-chip="100">100</button>
-        <button class="chip" data-chip="500">500</button>
-        <button class="chip active" data-chip="1000">1K</button>
-        <button class="chip" data-chip="5000">5K</button>
-        <button class="chip" data-chip="10000">1W</button>
-      </div>
+    <div class="tips-row">
+      <div>小龙<br><span>闲2张牌7点赢</span></div>
+      <div>大龙<br><span>闲3张牌7点赢</span></div>
+      <div>龙虎斗<br><span>娱乐玩法展示</span></div>
+      <div>大老虎<br><span>庄3张牌6点赢</span></div>
+      <div>小老虎<br><span>庄2张牌6点赢</span></div>
+    </div>
 
-      <div class="controls">
-        <button id="dealBtn" class="dealBtn">开始发牌</button>
-        <button id="repeatBtn" class="darkBtn">重复下注</button>
-        <button id="resetBtn" class="darkBtn">重置</button>
-      </div>
+    <div class="main-bets">
+      <button class="bet-box player" data-bet="player">
+        <small>7%</small>
+        <b>闲</b>
+        <span>1:1</span>
+      </button>
 
-      <div id="message" class="message">请选择筹码和下注区域</div>
-    </section>
+      <button class="bet-box tie" data-bet="tie">
+        <small>0%</small>
+        <b>和</b>
+        <span>1:8</span>
+      </button>
 
-    <aside class="sidePanel">
-      <div class="statGrid">
-        <div><span>局数</span><strong id="rounds">0</strong></div>
-        <div><span>闲胜</span><strong id="pWins">0</strong></div>
-        <div><span>庄胜</span><strong id="bWins">0</strong></div>
-        <div><span>和局</span><strong id="tWins">0</strong></div>
-        <div><span>胜率</span><strong id="winRate">0%</strong></div>
-        <div><span>连胜</span><strong id="streak">0</strong></div>
-      </div>
+      <button class="bet-box banker" data-bet="banker">
+        <small>93%</small>
+        <b>庄</b>
+        <span>1:0.95</span>
+      </button>
+    </div>
 
-      <div class="roadBox">
-        <div class="roadTitle">珠盘路</div>
-        <div id="beadRoad" class="beadRoad"></div>
-      </div>
+    <div class="action-row">
+      <button id="cancelBtn">× 取消</button>
+      <button id="repeatBtn">↻ 重复</button>
+    </div>
 
-      <div class="roadBox">
-        <div class="roadTitle">大路</div>
-        <div id="bigRoad" class="bigRoad"></div>
-      </div>
-    </aside>
-  </main>
+    <div id="message" class="message">请选择筹码和下注区域</div>
+  </section>
+
+  <section class="chip-bar">
+    <button class="side-btn">玩法</button>
+    <div class="chips">
+      <button class="chip c10" data-chip="100">100</button>
+      <button class="chip c20" data-chip="500">500</button>
+      <button class="chip c50 active" data-chip="1000">1K</button>
+      <button class="chip c100" data-chip="5000">5K</button>
+      <button class="chip c200" data-chip="10000">1W</button>
+    </div>
+    <button class="side-btn" id="soundBtn">🔊</button>
+  </section>
+
+  <section class="road-tabs">
+    <button>庄问路</button>
+    <button>闲问路</button>
+    <button id="dealBtn">开始发牌</button>
+  </section>
+
+  <section class="roads">
+    <div class="stat-line">
+      <span>🔴 <b id="bWins">0</b></span>
+      <span>🔵 <b id="pWins">0</b></span>
+      <span>🟢 <b id="tWins">0</b></span>
+      <span>局数 <b id="rounds">0</b></span>
+      <span>胜率 <b id="winRate">0%</b></span>
+    </div>
+
+    <div class="road-wrap">
+      <div id="beadRoad" class="bead-road"></div>
+      <div id="bigRoad" class="big-road"></div>
+    </div>
+  </section>
+
 </div>
 
 <script src="game.js"></script>
