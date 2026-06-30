@@ -107,3 +107,4 @@ function deal(){
 // 初始化
 initShoe();
 document.getElementById("money").innerText = money;
+console.log("update");
