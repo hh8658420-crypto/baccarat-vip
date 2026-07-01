@@ -220,8 +220,8 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
     <div class="liveBg"></div>
     <div class="lightRig"></div>
     <div class="dealerVideoWrap" aria-label="真人动态荷官视频区">
-      <video id="dealerVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture poster="assets/hj_poster_small.jpg?v=stable2">
-        <source src="assets/hj.mp4?v=stable2" type="video/mp4">
+      <video id="dealerVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture poster="assets/hj_poster_small.jpg?v=voice2">
+        <source src="assets/hj.mp4?v=voice2" type="video/mp4">
       </video>
     </div>
     <div class="videoStatus" id="videoStatus"></div>
@@ -330,22 +330,27 @@ let stackIndex = 0;
 const AREA_MAX = 200000; // 单门限红：20万，结果仍然按真实8副牌随机
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* ===== 声音系统：iPhone 需要一次点击解锁；语音用系统中文 TTS，音效用 WebAudio ===== */
+/* ===== 声音系统：WebAudio 音效 + 本地中文语音包（不再依赖 iPhone 的系统TTS） ===== */
 let audioCtx=null;
 let soundReady=false;
-let speechReady=false;
 let zhVoice=null;
+const digitVoice=['zero','one','two','three','four','five','six','seven','eight','nine'];
+const voiceFiles={
+  sound_on:'声音已开启',
+  xian:'闲', zhuang:'庄', dian:'点',
+  zero:'零', one:'一', two:'二', three:'三', four:'四', five:'五', six:'六', seven:'七', eight:'八', nine:'九',
+  xian_win:'闲赢', zhuang_win:'庄赢', tie_win:'和局',
+  xian_dragon:'闲长龙出现', zhuang_dragon:'庄长龙出现'
+};
+let voiceBuffers={};
+let voiceLoadPromise=null;
 function refreshVoices(){
   try{
     const voices=(window.speechSynthesis&&speechSynthesis.getVoices)?speechSynthesis.getVoices():[];
     zhVoice=voices.find(v=>/zh|Chinese|普通话|国语|Mandarin|Siri/i.test((v.lang||'')+' '+(v.name||'')))||voices.find(v=>/^zh/i.test(v.lang||''))||voices[0]||null;
-    speechReady=!!voices.length;
   }catch(e){}
 }
-if(window.speechSynthesis){
-  refreshVoices();
-  speechSynthesis.onvoiceschanged=refreshVoices;
-}
+if(window.speechSynthesis){refreshVoices();speechSynthesis.onvoiceschanged=refreshVoices;}
 function getAudioCtx(){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -360,6 +365,49 @@ function setSoundButton(){
   soundBtn.textContent=soundReady?'🔊声音':'🔇声音';
   soundBtn.classList.toggle('on',soundReady);
 }
+function preloadVoiceBuffers(){
+  const ctx=getAudioCtx();
+  if(!ctx)return Promise.resolve(false);
+  if(voiceLoadPromise)return voiceLoadPromise;
+  voiceLoadPromise=Promise.all(Object.keys(voiceFiles).map(async name=>{
+    try{
+      const res=await fetch(`assets/audio/${name}.wav?v=voice2`,{cache:'force-cache'});
+      if(!res.ok)throw new Error('missing '+name);
+      const arr=await res.arrayBuffer();
+      voiceBuffers[name]=await ctx.decodeAudioData(arr.slice(0));
+      return true;
+    }catch(e){return false;}
+  })).then(list=>list.some(Boolean)).catch(()=>false);
+  return voiceLoadPromise;
+}
+function playVoiceClip(name, when=0, gainValue=1.35){
+  const ctx=getAudioCtx();
+  const buffer=voiceBuffers[name];
+  if(!ctx||!buffer||!soundReady)return 0;
+  try{
+    const src=ctx.createBufferSource();
+    const g=ctx.createGain();
+    src.buffer=buffer;
+    g.gain.setValueAtTime(gainValue,ctx.currentTime+when);
+    src.connect(g);g.connect(ctx.destination);
+    src.start(ctx.currentTime+when);
+    return buffer.duration;
+  }catch(e){return 0;}
+}
+function playVoiceSequence(names,startDelay=.05,fallbackText=''){
+  if(!soundReady)return;
+  preloadVoiceBuffers().then(ok=>{
+    if(ok){
+      let t=startDelay;
+      for(const name of names){
+        const d=playVoiceClip(name,t,1.45);
+        t += Math.max(d||0,.28)+.08;
+      }
+    }else if(fallbackText){
+      speakCN(fallbackText,Math.round(startDelay*1000),true);
+    }
+  });
+}
 function unlockSound(withTest=false){
   const ctx=getAudioCtx();
   if(!ctx)return false;
@@ -370,9 +418,10 @@ function unlockSound(withTest=false){
     refreshVoices();
     if(window.speechSynthesis){try{speechSynthesis.resume();}catch(e){}}
     soundReady=true;setSoundButton();
+    preloadVoiceBuffers();
     if(withTest){
-      playTone(660,.08,'triangle',.055,0);playTone(880,.1,'triangle',.055,.09);
-      speakCN('声音已开启',180,true);
+      playTone(660,.08,'triangle',.075,0);playTone(880,.1,'triangle',.075,.09);
+      playVoiceSequence(['sound_on'],.20,'声音已开启');
       toast('声音已开启');
     }
     return true;
@@ -405,22 +454,24 @@ function playNoise(dur=.08,gain=.04,filterFreq=1300,delay=0){
     src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+.04);
   }catch(e){}
 }
-function playChipSound(){playTone(430,.055,'square',.06,0);playTone(780,.05,'triangle',.04,.035);playNoise(.045,.035,2400,.015)}
-function playDealSound(){playNoise(.09,.05,1900,0);playTone(260,.045,'triangle',.028,.02)}
-function playFlipSound(){playNoise(.09,.06,3000,0);playTone(940,.055,'sine',.035,.035)}
+function playChipSound(){playTone(430,.055,'square',.07,0);playTone(780,.05,'triangle',.055,.035);playNoise(.045,.045,2400,.015)}
+function playDealSound(){playNoise(.10,.065,1900,0);playTone(260,.05,'triangle',.04,.02)}
+function playFlipSound(){playNoise(.10,.07,3000,0);playTone(940,.06,'sine',.05,.035)}
 function playWinSound(w){
-  if(w==='TIE'){playTone(560,.12,'triangle',.065,0);playTone(720,.16,'triangle',.06,.13);return;}
-  playTone(520,.09,'triangle',.065,0);playTone(690,.1,'triangle',.06,.1);playTone(880,.16,'triangle',.07,.22);
+  if(w==='TIE'){playTone(560,.13,'triangle',.075,0);playTone(720,.18,'triangle',.075,.13);return;}
+  playTone(520,.10,'triangle',.075,0);playTone(690,.11,'triangle',.075,.1);playTone(880,.18,'triangle',.085,.22);
 }
 function playDragonRoar(){
   const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
   try{
-    playNoise(1.05,.13,440,0);playNoise(.72,.08,130,.07);playNoise(.55,.05,850,.26);
+    playNoise(1.25,.20,360,0);playNoise(1.05,.16,95,.02);playNoise(.72,.11,760,.24);
     const t=ctx.currentTime+.02;
-    const o=ctx.createOscillator(), g=ctx.createGain();
-    o.type='sawtooth';o.frequency.setValueAtTime(115,t);o.frequency.exponentialRampToValueAtTime(36,t+1.05);
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.08);g.gain.exponentialRampToValueAtTime(0.0001,t+1.12);
-    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+1.18);
+    const o=ctx.createOscillator(), g=ctx.createGain(), filt=ctx.createBiquadFilter();
+    o.type='sawtooth';o.frequency.setValueAtTime(155,t);o.frequency.exponentialRampToValueAtTime(32,t+1.28);
+    filt.type='lowpass';filt.frequency.setValueAtTime(680,t);filt.frequency.exponentialRampToValueAtTime(170,t+1.28);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.08);g.gain.exponentialRampToValueAtTime(0.0001,t+1.35);
+    o.connect(filt);filt.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+1.42);
+    setTimeout(()=>{playNoise(.65,.14,180,0);playTone(70,.62,'sawtooth',.13,0);},420);
   }catch(e){}
 }
 function speakCN(text,delay=0,force=false){
@@ -428,20 +479,26 @@ function speakCN(text,delay=0,force=false){
   if(!('speechSynthesis' in window))return;
   setTimeout(()=>{
     try{
-      refreshVoices();
-      speechSynthesis.resume();
+      refreshVoices();speechSynthesis.resume();
       const u=new SpeechSynthesisUtterance(String(text));
-      u.lang=(zhVoice&&zhVoice.lang)||'zh-CN';u.rate=.98;u.pitch=1.02;u.volume=1;
+      u.lang=(zhVoice&&zhVoice.lang)||'zh-CN';u.rate=.92;u.pitch=1;u.volume=1;
       if(zhVoice)u.voice=zhVoice;
       speechSynthesis.speak(u);
     }catch(e){}
   },delay);
 }
-function announceRound(r,dragonText=''){
-  try{if(window.speechSynthesis){speechSynthesis.cancel();speechSynthesis.resume();}}catch(e){}
+function announceRound(r,dragonInfo=null){
+  const pointText=`闲 ${r.pt} 点，庄 ${r.bt} 点`;
   const winnerText=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';
-  speakCN(`闲 ${r.pt} 点，庄 ${r.bt} 点`,120);
-  speakCN(dragonText?`${winnerText}，${dragonText}`:winnerText,1600);
+  const pointSeq=['xian',digitVoice[r.pt]||'zero','dian','zhuang',digitVoice[r.bt]||'zero','dian'];
+  playVoiceSequence(pointSeq,.12,pointText);
+  setTimeout(()=>{
+    playVoiceSequence([r.winner==='PLAYER'?'xian_win':r.winner==='BANKER'?'zhuang_win':'tie_win'],.05,winnerText);
+    if(dragonInfo && dragonInfo.count>=4 && r.winner!=='TIE'){
+      const key=dragonInfo.winner==='BANKER'?'zhuang_dragon':'xian_dragon';
+      setTimeout(()=>playVoiceSequence([key],.05,(dragonInfo.winner==='BANKER'?'庄':'闲')+'长龙出现'),720);
+    }
+  },2100);
 }
 
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),900)}
@@ -551,12 +608,13 @@ function finishRound(r){
   history.push(r);if(history.length>120)history.shift();
   const baseText=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';
   const st=getCurrentMainStreak();
-  const dragon=(st && st.count>=4 && r.winner!=='TIE') ? ' · '+(st.winner==='BANKER'?'庄':'闲')+'长龙'+st.count : '';
+  const dragonInfo=(st && st.count>=4 && r.winner!=='TIE') ? st : null;
+  const dragon=dragonInfo ? ' · '+(dragonInfo.winner==='BANKER'?'庄':'闲')+'长龙'+dragonInfo.count : '';
   winnerFlash.textContent=baseText+dragon;
   winnerFlash.classList.add('show');
   playWinSound(r.winner);
-  announceRound(r, dragon ? dragon.replace(' · ','') : '');
-  if(dragon)setTimeout(playDragonRoar,620);
+  announceRound(r, dragonInfo);
+  if(dragonInfo){setTimeout(playDragonRoar,520);setTimeout(playDragonRoar,1350)}
   updateMiss(r);renderRoads();highlightWinningBoxes(r);settleBets(r);clearBetChips(false);
   setTimeout(()=>{winnerFlash.classList.remove('show');resultStrip.classList.remove('show');resetCards()},2600);
   setTimeout(()=>{setLocked(false);startTimer()},3100)
