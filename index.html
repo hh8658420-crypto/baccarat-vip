@@ -207,6 +207,9 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 #redeemConfirm{background:linear-gradient(180deg,#ffd56c,#c98224);color:#4b080d}
 .redeemTip{margin-top:10px;font-size:11px;color:rgba(255,240,220,.58);line-height:1.35}
 
+.soundBtn{height:34px;padding:0 10px;border:1px solid rgba(255,230,160,.35);border-radius:12px;background:linear-gradient(180deg,rgba(255,226,130,.24),rgba(85,24,20,.42));color:#ffe7a4;font-size:13px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.14);white-space:nowrap}
+.soundBtn.on{background:linear-gradient(180deg,#ffe082,#b86b16);color:#4a080b;border-color:rgba(255,245,185,.72)}
+
 </style>
 </head>
 <body>
@@ -256,7 +259,7 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
   </section>
   <section class="roadTop">
     <div class="stats" id="stats"></div>
-    <div class="roadWallet"><div class="roadBalance" id="balanceText">本金:0</div><button class="redeemBtn" id="redeemBtn" type="button">兑换</button></div>
+    <div class="roadWallet"><div class="roadBalance" id="balanceText">本金:0</div><button class="soundBtn" id="soundBtn" type="button">🔇声音</button><button class="redeemBtn" id="redeemBtn" type="button">兑换</button></div>
   </section>
   <section class="road">
     <div class="bead"><div class="gridBg"></div><div class="roadCanvas" id="beadRoad"></div></div>
@@ -298,6 +301,7 @@ const toastEl = document.getElementById('toast');
 const shoeNo = document.getElementById('shoeNo');
 const balanceText = document.getElementById('balanceText');
 const redeemBtn = document.getElementById('redeemBtn');
+const soundBtn = document.getElementById('soundBtn');
 const redeemMask = document.getElementById('redeemMask');
 const redeemInput = document.getElementById('redeemInput');
 const redeemCancel = document.getElementById('redeemCancel');
@@ -326,8 +330,22 @@ let stackIndex = 0;
 const AREA_MAX = 200000; // 单门限红：20万，结果仍然按真实8副牌随机
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* ===== 声音系统：不依赖外部音频文件，使用 WebAudio + 中文语音播报 ===== */
+/* ===== 声音系统：iPhone 需要一次点击解锁；语音用系统中文 TTS，音效用 WebAudio ===== */
 let audioCtx=null;
+let soundReady=false;
+let speechReady=false;
+let zhVoice=null;
+function refreshVoices(){
+  try{
+    const voices=(window.speechSynthesis&&speechSynthesis.getVoices)?speechSynthesis.getVoices():[];
+    zhVoice=voices.find(v=>/zh|Chinese|普通话|国语|Mandarin|Siri/i.test((v.lang||'')+' '+(v.name||'')))||voices.find(v=>/^zh/i.test(v.lang||''))||voices[0]||null;
+    speechReady=!!voices.length;
+  }catch(e){}
+}
+if(window.speechSynthesis){
+  refreshVoices();
+  speechSynthesis.onvoiceschanged=refreshVoices;
+}
 function getAudioCtx(){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -337,18 +355,32 @@ function getAudioCtx(){
     return audioCtx;
   }catch(e){return null}
 }
-function unlockSound(){
+function setSoundButton(){
+  if(!soundBtn)return;
+  soundBtn.textContent=soundReady?'🔊声音':'🔇声音';
+  soundBtn.classList.toggle('on',soundReady);
+}
+function unlockSound(withTest=false){
   const ctx=getAudioCtx();
-  if(!ctx)return;
+  if(!ctx)return false;
   try{
+    if(ctx.state==='suspended')ctx.resume().catch(()=>{});
     const o=ctx.createOscillator(), g=ctx.createGain();
     g.gain.value=0.00001;o.frequency.value=1;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.02);
-    if(window.speechSynthesis) speechSynthesis.getVoices();
-  }catch(e){}
+    refreshVoices();
+    if(window.speechSynthesis){try{speechSynthesis.resume();}catch(e){}}
+    soundReady=true;setSoundButton();
+    if(withTest){
+      playTone(660,.08,'triangle',.055,0);playTone(880,.1,'triangle',.055,.09);
+      speakCN('声音已开启',180,true);
+      toast('声音已开启');
+    }
+    return true;
+  }catch(e){return false}
 }
-['pointerdown','touchstart','click'].forEach(ev=>document.addEventListener(ev,unlockSound,{passive:true}));
+['pointerdown','touchstart','click'].forEach(ev=>document.addEventListener(ev,()=>unlockSound(false),{passive:true,once:false}));
 function playTone(freq=600,dur=.08,type='sine',gain=.04,delay=0){
-  const ctx=getAudioCtx(); if(!ctx)return;
+  const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
   try{
     const t=ctx.currentTime+delay;
     const o=ctx.createOscillator(), g=ctx.createGain();
@@ -356,11 +388,11 @@ function playTone(freq=600,dur=.08,type='sine',gain=.04,delay=0){
     g.gain.setValueAtTime(0.0001,t);
     g.gain.exponentialRampToValueAtTime(Math.max(gain,0.0002),t+.012);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+.04);
+    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+.05);
   }catch(e){}
 }
 function playNoise(dur=.08,gain=.04,filterFreq=1300,delay=0){
-  const ctx=getAudioCtx(); if(!ctx)return;
+  const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
   try{
     const length=Math.max(1,Math.floor(ctx.sampleRate*dur));
     const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
@@ -370,49 +402,51 @@ function playNoise(dur=.08,gain=.04,filterFreq=1300,delay=0){
     const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=filterFreq;filt.Q.value=.9;
     const g=ctx.createGain();const t=ctx.currentTime+delay;
     g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+.03);
+    src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+.04);
   }catch(e){}
 }
-function playChipSound(){playTone(420,.055,'square',.035,0);playTone(760,.05,'triangle',.025,.035);playNoise(.045,.018,2200,.015)}
-function playDealSound(){playNoise(.06,.026,1800,0);playTone(260,.035,'triangle',.018,.02)}
-function playFlipSound(){playNoise(.075,.033,2600,0);playTone(900,.045,'sine',.018,.035)}
+function playChipSound(){playTone(430,.055,'square',.06,0);playTone(780,.05,'triangle',.04,.035);playNoise(.045,.035,2400,.015)}
+function playDealSound(){playNoise(.09,.05,1900,0);playTone(260,.045,'triangle',.028,.02)}
+function playFlipSound(){playNoise(.09,.06,3000,0);playTone(940,.055,'sine',.035,.035)}
 function playWinSound(w){
-  if(w==='TIE'){playTone(560,.11,'triangle',.045,0);playTone(720,.14,'triangle',.04,.12);return;}
-  playTone(520,.08,'triangle',.042,0);playTone(680,.09,'triangle',.04,.09);playTone(860,.13,'triangle',.048,.19);
+  if(w==='TIE'){playTone(560,.12,'triangle',.065,0);playTone(720,.16,'triangle',.06,.13);return;}
+  playTone(520,.09,'triangle',.065,0);playTone(690,.1,'triangle',.06,.1);playTone(880,.16,'triangle',.07,.22);
 }
 function playDragonRoar(){
-  const ctx=getAudioCtx(); if(!ctx)return;
+  const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
   try{
-    playNoise(.85,.085,520,0);playNoise(.55,.045,180,.08);
+    playNoise(1.05,.13,440,0);playNoise(.72,.08,130,.07);playNoise(.55,.05,850,.26);
     const t=ctx.currentTime+.02;
     const o=ctx.createOscillator(), g=ctx.createGain();
-    o.type='sawtooth';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(38,t+.82);
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.075,t+.08);g.gain.exponentialRampToValueAtTime(0.0001,t+.9);
-    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.95);
+    o.type='sawtooth';o.frequency.setValueAtTime(115,t);o.frequency.exponentialRampToValueAtTime(36,t+1.05);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.08);g.gain.exponentialRampToValueAtTime(0.0001,t+1.12);
+    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+1.18);
   }catch(e){}
 }
-function speakCN(text,delay=0){
+function speakCN(text,delay=0,force=false){
+  if(!soundReady && !force)return;
   if(!('speechSynthesis' in window))return;
   setTimeout(()=>{
     try{
-      const u=new SpeechSynthesisUtterance(text);
-      u.lang='zh-CN';u.rate=1.05;u.pitch=1;u.volume=.95;
-      const voices=speechSynthesis.getVoices&&speechSynthesis.getVoices();
-      const zh=voices&&voices.find(v=>/zh|Chinese|普通话|国语/i.test(v.lang+' '+v.name));
-      if(zh)u.voice=zh;
+      refreshVoices();
+      speechSynthesis.resume();
+      const u=new SpeechSynthesisUtterance(String(text));
+      u.lang=(zhVoice&&zhVoice.lang)||'zh-CN';u.rate=.98;u.pitch=1.02;u.volume=1;
+      if(zhVoice)u.voice=zhVoice;
       speechSynthesis.speak(u);
     }catch(e){}
   },delay);
 }
 function announceRound(r,dragonText=''){
-  try{if(window.speechSynthesis)speechSynthesis.cancel()}catch(e){}
+  try{if(window.speechSynthesis){speechSynthesis.cancel();speechSynthesis.resume();}}catch(e){}
   const winnerText=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';
   speakCN(`闲 ${r.pt} 点，庄 ${r.bt} 点`,120);
-  speakCN(dragonText?`${winnerText}，${dragonText}`:winnerText,1450);
+  speakCN(dragonText?`${winnerText}，${dragonText}`:winnerText,1600);
 }
 
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),900)}
 function addEvt(el, fn){el.addEventListener('pointerdown', e => {e.preventDefault(); fn(e);}, {passive:false})}
+if(soundBtn)addEvt(soundBtn,()=>unlockSound(true));
 function cardPoint(c){if(['10','J','Q','K'].includes(c.r)) return 0; if(c.r==='A') return 1; return Number(c.r)}
 function total(hand){return hand.reduce((s,c)=>s+cardPoint(c),0)%10}
 function randInt(max){
@@ -574,7 +608,7 @@ function renderBigRoad(){
   if(tieCount){for(let i=0;i<Math.min(6,tieCount);i++){const s=document.createElement('div');s.className='smallMark solid';s.style.left=(16+i*8)+'px';s.style.top='118px';bigRoad.appendChild(s)}}
 }
 function renderDerived(){derivedRoad.innerHTML='';const list=history.slice(-70);for(let i=0;i<list.length;i++){if(i%2!==0)continue;const m=document.createElement('div');const blue=(list[i].winner==='PLAYER');m.className='smallMark '+(blue?'blueM':'')+(i%4===0?' solid':'');m.style.left=(8+(i/2)*9)+'px';m.style.top=(8+((i/2)%6)*9)+'px';derivedRoad.appendChild(m)}}
-function initGame(){history=[];miss={PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};updateClockText();updateBalance();renderRoads();resetCards();updateHeader();document.querySelectorAll('[data-miss]').forEach(el=>el.textContent='0局未出')}
+function initGame(){setSoundButton();history=[];miss={PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};updateClockText();updateBalance();renderRoads();resetCards();updateHeader();document.querySelectorAll('[data-miss]').forEach(el=>el.textContent='0局未出')}
 
 function initDealerVideo(){
   const video=document.getElementById('dealerVideo');
