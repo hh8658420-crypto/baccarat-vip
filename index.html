@@ -39,7 +39,7 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 </head>
 <body>
 <div class="app" id="app">
-  <div class="topbar"><span>15:25</span><div class="pill"></div><span class="coins">● 0.85</span></div>
+  <div class="topbar"><span id="timeText">15:25</span><div class="pill"></div><span class="coins" id="balanceText">本金:10,000</span></div>
   <div class="gameInfo"><span id="shoeNo">局号:GM1826701591</span><div class="clock" id="clock">10</div><span>限红:10~2,000,000</span></div>
   <section class="stage">
     <div class="room"></div><div class="curtain"></div><div class="dealer"></div>
@@ -110,6 +110,8 @@ const bigRoad = document.getElementById('bigRoad');
 const derivedRoad = document.getElementById('derivedRoad');
 const toastEl = document.getElementById('toast');
 const shoeNo = document.getElementById('shoeNo');
+const balanceText = document.getElementById('balanceText');
+const timeText = document.getElementById('timeText');
 const chips = [...document.querySelectorAll('.chip')];
 const betBoxes = [...document.querySelectorAll('.betBox[data-bet]')];
 const clearBtn = document.getElementById('clearBtn');
@@ -117,7 +119,8 @@ const repeatBtn = document.getElementById('repeatBtn');
 const commissionBtn = document.getElementById('commission');
 const bankerOdds = document.getElementById('bankerOdds');
 let selectedValue = 200, selectedChip = chips[0], noCommission = false;
-let deck = [], roundNo = 1591, timer = 10, ticking = null, dealing = false;
+let deck = [], roundNo = 0, timer = 10, ticking = null, dealing = false;
+let bankroll = 10000;
 let bets = {}, lastBets = {}, history = [];
 let miss = {PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};
 let stackIndex = 0;
@@ -136,21 +139,26 @@ function fmt(v){return v>=10000?(v/10000)+'W':v>=1000?(v/1000)+'K':String(v)}
 function resetCards(){pSlots.forEach(s=>s.innerHTML='');bSlots.forEach(s=>s.innerHTML='');pRes.innerHTML='';bRes.innerHTML='';pScore.textContent='0';bScore.textContent='0';resultStrip.classList.remove('show');winnerFlash.classList.remove('show')}
 function setLocked(v){dealing=v; app.classList.toggle('locked', v)}
 function startTimer(){clearInterval(ticking);timer=10;clockEl.textContent=timer;ticking=setInterval(()=>{if(dealing)return;timer--;clockEl.textContent=timer;if(timer<=0){clearInterval(ticking);playRound()}},1000)}
-function updateHeader(){shoeNo.textContent = '局号:GM182670' + String(roundNo).padStart(4,'0')}
+function updateHeader(){shoeNo.textContent = '局号:GM' + String(roundNo).padStart(10,'0')}
+function money(v){return Math.round(v).toLocaleString('zh-CN')}
+function updateBalance(){balanceText.textContent='本金:'+money(bankroll)}
+function updateClockText(){const d=new Date();timeText.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function betTotal(obj=bets){return Object.values(obj).reduce((s,v)=>s+Number(v||0),0)}
 function updateBetsDisplay(){const p=bets.PLAYER||0,b=bets.BANKER||0,t=bets.TIE||0;document.getElementById('pAmt').textContent=fmt(p);document.getElementById('bAmt').textContent=fmt(b);document.getElementById('pNum').textContent=p?Math.max(1,Math.round(p/500)):0;document.getElementById('bNum').textContent=b?Math.max(1,Math.round(b/500)):0;const sum=p+b+t;document.getElementById('pPct').textContent=sum?Math.round(p/sum*100)+'%':'0%';document.getElementById('bPct').textContent=sum?Math.round(b/sum*100)+'%':'0%';document.getElementById('tPct').textContent=sum?Math.round(t/sum*100)+'%':'0%'}
-function clearBetChips(){document.querySelectorAll('.stackChip').forEach(x=>x.remove());bets={};stackIndex=0;updateBetsDisplay()}
+function clearBetChips(refund=false){if(refund){const back=betTotal(bets);if(back>0){bankroll+=back;updateBalance();}}document.querySelectorAll('.stackChip').forEach(x=>x.remove());bets={};stackIndex=0;updateBetsDisplay()}
 function flyChip(fromEl, toEl, value){const fr=fromEl.getBoundingClientRect(), tr=toEl.getBoundingClientRect();const appR=app.getBoundingClientRect();const x=fr.left+fr.width/2-16, y=fr.top+fr.height/2-16;const tx=tr.left+tr.width*(.38+Math.random()*.24)-16, ty=tr.top+tr.height*(.42+Math.random()*.24)-16;const f=document.createElement('div');f.className='floatChip '+chipClass(value);f.textContent=fmt(value);f.style.left=x+'px';f.style.top=y+'px';document.body.appendChild(f);requestAnimationFrame(()=>{f.classList.add('fly');f.style.transform=`translate(${tx-x}px,${ty-y}px) scale(.78)`});setTimeout(()=>{f.remove();const s=document.createElement('div');s.className='stackChip '+chipClass(value);s.textContent=fmt(value);const localX=tx-appR.left-board.getBoundingClientRect().left+appR.left;const localY=ty-board.getBoundingClientRect().top;s.style.left=Math.max(8,Math.min(toEl.clientWidth-40, tx-tr.left))+'px';s.style.top=Math.max(8,Math.min(toEl.clientHeight-40, ty-tr.top))+'px';s.style.transform=`translate(${(stackIndex%5)*3}px,${Math.floor(stackIndex/5)*-2}px) scale(.9)`;toEl.appendChild(s);stackIndex++},330)}
-function placeBet(box){if(dealing)return;const k=box.dataset.bet;bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
+function placeBet(box){if(dealing)return;const k=box.dataset.bet;if(bankroll<selectedValue){toast('模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
 chips.forEach(ch=>addEvt(ch,()=>{chips.forEach(c=>c.classList.remove('selected'));ch.classList.add('selected');selectedChip=ch;selectedValue=Number(ch.dataset.value)}));
 betBoxes.forEach(b=>addEvt(b,()=>placeBet(b)));
-addEvt(clearBtn,()=>{if(dealing)return;clearBetChips()});
-addEvt(repeatBtn,()=>{if(dealing)return;if(!Object.keys(lastBets).length){toast('暂无上一局下注');return}clearBetChips();bets={...lastBets};for(const [k,v] of Object.entries(bets)){const box=document.querySelector(`[data-bet="${k}"]`);if(box){const fake=document.createElement('div');fake.style.position='fixed';fake.style.left='50%';fake.style.top='62%';document.body.appendChild(fake);flyChip(selectedChip,box,Math.min(v,10000));fake.remove()}}updateBetsDisplay()});
+addEvt(clearBtn,()=>{if(dealing)return;clearBetChips(true)});
+addEvt(repeatBtn,()=>{if(dealing)return;if(!Object.keys(lastBets).length){toast('暂无上一局下注');return}clearBetChips(true);const need=betTotal(lastBets);if(bankroll<need){toast('模拟本金不足');return}bankroll-=need;updateBalance();bets={...lastBets};for(const [k,v] of Object.entries(bets)){const box=document.querySelector(`[data-bet="${k}"]`);if(box){flyChip(selectedChip,box,Math.min(v,10000))}}updateBetsDisplay()});
 addEvt(commissionBtn,()=>{noCommission=!noCommission;commissionBtn.style.filter=noCommission?'brightness(1.35)':'none';bankerOdds.textContent=noCommission?'1:1':'1:0.95'});
 function calcRound(){const p=[draw(),draw()], b=[draw(),draw()];let pt=total(p), bt=total(b);let p3=null,b3=null;if(pt<8 && bt<8){if(pt<=5){p3=draw();p.push(p3);pt=total(p)}if(!p3){if(bt<=5){b3=draw();b.push(b3)}}else{const x=cardPoint(p3);if(bt<=2 || (bt===3&&x!==8) || (bt===4&&x>=2&&x<=7) || (bt===5&&x>=4&&x<=7) || (bt===6&&(x===6||x===7))){b3=draw();b.push(b3)}}}pt=total(p);bt=total(b);const winner=pt>bt?'PLAYER':bt>pt?'BANKER':'TIE';return {p,b,pt,bt,winner,pPair:p[0].r===p[1].r,bPair:b[0].r===b[1].r,p3,b3}}
 async function showBack(slot){slot.innerHTML=cardHtml(null,true);await sleep(260)}
 async function flip(slot, c){const el=slot.querySelector('.card');if(el){el.style.transform='rotateY(90deg)';await sleep(170)}slot.innerHTML=cardHtml(c,false);const n=slot.querySelector('.card');n.style.transform='rotateY(-90deg)';requestAnimationFrame(()=>n.style.transform='rotateY(0deg)');await sleep(250)}
 async function playRound(){if(dealing)return;setLocked(true);lastBets={...bets};roundNo++;updateHeader();resetCards();await sleep(220);await showBack(pSlots[0]);await showBack(bSlots[0]);await showBack(pSlots[1]);await showBack(bSlots[1]);const r=calcRound();await sleep(620);await flip(pSlots[0],r.p[0]);await flip(bSlots[0],r.b[0]);await flip(pSlots[1],r.p[1]);await flip(bSlots[1],r.b[1]);await sleep(500);if(r.p.length>2){await showBack(pSlots[2]);await sleep(520);await flip(pSlots[2],r.p[2])}if(r.b.length>2){await showBack(bSlots[2]);await sleep(520);await flip(bSlots[2],r.b[2])}await sleep(250);finishRound(r)}
-function finishRound(r){pScore.textContent=r.pt;bScore.textContent=r.bt;pRes.innerHTML=r.p.map(c=>cardHtml(c)).join('');bRes.innerHTML=r.b.map(c=>cardHtml(c)).join('');resultStrip.classList.add('show');const text=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';winnerFlash.textContent=text;winnerFlash.classList.add('show');history.push(r);if(history.length>90)history.shift();updateMiss(r);renderRoads();clearBetChips();setTimeout(()=>{winnerFlash.classList.remove('show')},1500);setTimeout(()=>{setLocked(false);startTimer()},2300)}
+function settleBets(r){const staked=betTotal(bets);if(!staked){toast('未下注，本局只记录路单');return}let returned=0;const totalCards=r.p.length+r.b.length;for(const [k,amt] of Object.entries(bets)){let odds=0,push=false;if(k==='PLAYER'){if(r.winner==='PLAYER')odds=1;else if(r.winner==='TIE')push=true}else if(k==='BANKER'){if(r.winner==='BANKER')odds=noCommission?1:.95;else if(r.winner==='TIE')push=true}else if(k==='TIE'){if(r.winner==='TIE')odds=8}else if(k==='PLAYER_PAIR'){if(r.pPair)odds=11}else if(k==='BANKER_PAIR'){if(r.bPair)odds=11}else if(k==='LUCKY7'){if(r.winner==='PLAYER'&&r.pt===7)odds=r.p.length===2?6:15}else if(k==='LUCKY6'){if(r.winner==='BANKER'&&r.bt===6)odds=r.b.length===2?12:20}else if(k==='SUPER7'){if(r.winner==='PLAYER'&&r.pt===7&&r.bt===6)odds=totalCards===4?30:totalCards===5?40:totalCards===6?100:0}if(push){returned+=amt}else if(odds>0){returned+=amt+amt*odds}}returned=Math.round(returned);bankroll+=returned;updateBalance();const net=returned-staked;if(net>0)toast('本局盈利 +'+money(net));else if(net<0)toast('本局亏损 '+money(net));else toast('本局走水')}
+function finishRound(r){pScore.textContent=r.pt;bScore.textContent=r.bt;pRes.innerHTML=r.p.map(c=>cardHtml(c)).join('');bRes.innerHTML=r.b.map(c=>cardHtml(c)).join('');resultStrip.classList.add('show');const text=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';winnerFlash.textContent=text;winnerFlash.classList.add('show');history.push(r);if(history.length>90)history.shift();updateMiss(r);renderRoads();settleBets(r);clearBetChips(false);setTimeout(()=>{winnerFlash.classList.remove('show')},1500);setTimeout(()=>{setLocked(false);startTimer()},2300)}
 function updateMiss(r){for(const k of Object.keys(miss)) miss[k]++;miss[r.winner]=0;if(r.pPair)miss.PLAYER_PAIR=0;if(r.bPair)miss.BANKER_PAIR=0;if(r.winner==='PLAYER'&&r.pt===7)miss.LUCKY7=0;if(r.winner==='BANKER'&&r.bt===6)miss.LUCKY6=0;if(r.winner==='PLAYER'&&r.pt===7&&r.bt===6)miss.SUPER7=0;document.querySelectorAll('[data-miss]').forEach(el=>{const k=el.dataset.miss;el.textContent=miss[k]+'局未出'})}
 function renderRoads(){renderStats();renderBead();renderBigRoad();renderDerived()}
 function renderStats(){const c={BANKER:0,PLAYER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0};history.forEach(r=>{c[r.winner]++;if(r.pPair)c.PLAYER_PAIR++;if(r.bPair)c.BANKER_PAIR++});statsEl.innerHTML=`<div class="stat"><span class="dot red"></span><span>${c.BANKER}</span></div><div class="stat"><span class="dot blue"></span><span>${c.PLAYER}</span></div><div class="stat"><span class="dot green"></span><span>${c.TIE}</span></div><div class="stat"><span class="dot tinyRed">6</span><span>${c.BANKER_PAIR}</span></div><div class="stat"><span class="dot blue">7</span><span>${c.PLAYER_PAIR}</span></div>`}
@@ -158,8 +166,8 @@ function addRoadDot(parent,x,y,type,text,small=false){const d=document.createEle
 function renderBead(){beadRoad.innerHTML='';const rows=6, size=22;history.slice(-36).forEach((r,i)=>{const col=Math.floor(i/rows), row=i%rows;const d=addRoadDot(beadRoad,6+col*size,8+row*size,r.winner,r.winner==='BANKER'?'庄':r.winner==='PLAYER'?'闲':'和');if(r.pPair)d.textContent='7';if(r.bPair)d.textContent='6'})}
 function renderBigRoad(){bigRoad.innerHTML='';let col=0,row=0,last=null;history.filter(r=>r.winner!=='TIE').slice(-54).forEach((r,i)=>{if(last&&r.winner===last&&row<5){row++}else if(last){col++;row=0}last=r.winner;const d=addRoadDot(bigRoad,10+col*18,8+row*18,r.winner,'',true);if(r.pPair||r.bPair){const m=document.createElement('span');m.className='tieSlash';d.appendChild(m)}});let tieCount=0;history.forEach(r=>{if(r.winner==='TIE')tieCount++});if(tieCount){for(let i=0;i<Math.min(6,tieCount);i++){const s=document.createElement('div');s.className='smallMark solid';s.style.left=(16+i*8)+'px';s.style.top='118px';bigRoad.appendChild(s)}}}
 function renderDerived(){derivedRoad.innerHTML='';const list=history.slice(-70);for(let i=0;i<list.length;i++){if(i%2!==0)continue;const m=document.createElement('div');const blue=(list[i].winner==='PLAYER');m.className='smallMark '+(blue?'blueM':'')+(i%4===0?' solid':'');m.style.left=(8+(i/2)*9)+'px';m.style.top=(8+((i/2)%6)*9)+'px';derivedRoad.appendChild(m)}}
-function seedHistory(){for(let i=0;i<22;i++){const r=calcRound();history.push(r);updateMiss(r)}renderRoads();resetCards();updateHeader()}
-deck=makeDeck();seedHistory();startTimer();
+function initGame(){history=[];miss={PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};updateClockText();updateBalance();renderRoads();resetCards();updateHeader();document.querySelectorAll('[data-miss]').forEach(el=>el.textContent='0局未出')}
+deck=makeDeck();initGame();setInterval(updateClockText,30000);startTimer();
 })();
 </script>
 </body>
