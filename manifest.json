@@ -1,10 +1,1 @@
-{
-  "name": "VIP真人百家乐",
-  "short_name": "VIP百家乐",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#4b0710",
-  "theme_color": "#4b0710",
-  "orientation": "portrait",
-  "icons": []
-}
+{"name":"百家乐概率模拟器","short_name":"百家乐模拟","start_url":"./index.html","display":"standalone","background_color":"#17171b","theme_color":"#9e2028"}
