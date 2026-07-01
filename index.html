@@ -368,10 +368,26 @@ let voiceLoadPromise=null;
 function refreshVoices(){
   try{
     const voices=(window.speechSynthesis&&speechSynthesis.getVoices)?speechSynthesis.getVoices():[];
-    zhVoice=voices.find(v=>/zh|Chinese|普通话|国语|Mandarin|Siri/i.test((v.lang||'')+' '+(v.name||'')))||voices.find(v=>/^zh/i.test(v.lang||''))||voices[0]||null;
+    const rankVoice = v => {
+      const name=((v.name||'')+' '+(v.lang||'')).toLowerCase();
+      let score=0;
+      if(/^zh/i.test(v.lang||''))score+=50;
+      if(/zh-cn|cmn|mandarin|chinese|普通话|国语|中文/i.test((v.lang||'')+' '+(v.name||'')))score+=30;
+      /* iOS/macOS/Edge 常见女声优先：Ting-Ting、Mei-Jia、Xiaoxiao、Xiaoyi 等 */
+      if(/ting|mei|xiaoxiao|xiaoyi|xiaobei|xiaoxuan|xiaohan|xiaozhen|xiaorui|huihui|yaoyao|hanhan|yating|siri|female|girl|woman|女|晓|小/i.test((v.name||'')))score+=40;
+      if(/male|man|男|yunjian|yunxi|yunyang/i.test((v.name||'')))score-=30;
+      if(v.localService)score+=6;
+      return score;
+    };
+    zhVoice = voices.slice().sort((a,b)=>rankVoice(b)-rankVoice(a))[0] || null;
   }catch(e){}
 }
-if(window.speechSynthesis){refreshVoices();speechSynthesis.onvoiceschanged=refreshVoices;}
+if(window.speechSynthesis){
+  refreshVoices();
+  speechSynthesis.onvoiceschanged=refreshVoices;
+  setTimeout(refreshVoices,300);
+  setTimeout(refreshVoices,900);
+}
 function getAudioCtx(){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -393,48 +409,16 @@ function base64ToArrayBuffer(b64){
   for(let i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
   return bytes.buffer;
 }
-function preloadVoiceBuffers(){
-  const ctx=getAudioCtx();
-  if(!ctx)return Promise.resolve(false);
-  if(voiceLoadPromise)return voiceLoadPromise;
-  voiceLoadPromise=Promise.all(Object.keys(voiceFiles).map(async name=>{
-    try{
-      const data=embeddedVoiceWav[name];
-      if(!data)throw new Error('missing embedded '+name);
-      const arr=base64ToArrayBuffer(data);
-      voiceBuffers[name]=await ctx.decodeAudioData(arr.slice(0));
-      return true;
-    }catch(e){console.warn('voice decode failed',name,e);return false;}
-  })).then(list=>list.every(Boolean)).catch(()=>false);
-  return voiceLoadPromise;
-}
-function playVoiceClip(name, when=0, gainValue=1.35){
-  const ctx=getAudioCtx();
-  const buffer=voiceBuffers[name];
-  if(!ctx||!buffer||!soundReady)return 0;
-  try{
-    const src=ctx.createBufferSource();
-    const g=ctx.createGain();
-    src.buffer=buffer;
-    g.gain.setValueAtTime(gainValue,ctx.currentTime+when);
-    src.connect(g);g.connect(ctx.destination);
-    src.start(ctx.currentTime+when);
-    return buffer.duration;
-  }catch(e){return 0;}
-}
+function preloadVoiceBuffers(){return Promise.resolve(true)}
+function playVoiceClip(){return 0}
 function playVoiceSequence(names,startDelay=.05,fallbackText=''){
   if(!soundReady)return;
-  preloadVoiceBuffers().then(ok=>{
-    if(ok){
-      let t=startDelay;
-      for(const name of names){
-        const d=playVoiceClip(name,t,1.75);
-        t += Math.max(d||0,.32)+.10;
-      }
-    }else if(fallbackText){
-      speakCN(fallbackText,Math.round(startDelay*1000),true);
-    }
-  });
+  if(fallbackText)speakCN(fallbackText,Math.round(startDelay*1000),true);
+}
+function stopCNVoice(){
+  try{
+    if(window.speechSynthesis){speechSynthesis.cancel();speechSynthesis.resume();}
+  }catch(e){}
 }
 function unlockSound(withTest=false){
   const ctx=getAudioCtx();
@@ -446,10 +430,9 @@ function unlockSound(withTest=false){
     refreshVoices();
     if(window.speechSynthesis){try{speechSynthesis.resume();}catch(e){}}
     soundReady=true;setSoundButton();
-    preloadVoiceBuffers();
     if(withTest){
       playTone(660,.08,'triangle',.075,0);playTone(880,.1,'triangle',.075,.09);
-      preloadVoiceBuffers().then(()=>playVoiceSequence(['sound_on'],.08,'声音已开启'));
+      speakCN('声音已开启',90,true);
       toast('声音已开启');
     }
     return true;
@@ -507,28 +490,27 @@ function speakCN(text,delay=0,force=false){
   if(!('speechSynthesis' in window))return;
   setTimeout(()=>{
     try{
-      refreshVoices();speechSynthesis.resume();
-      const u=new SpeechSynthesisUtterance(String(text));
-      u.lang=(zhVoice&&zhVoice.lang)||'zh-CN';u.rate=.92;u.pitch=1;u.volume=1;
+      refreshVoices();
+      stopCNVoice();
+      const u=new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
+      u.lang=(zhVoice&&zhVoice.lang)||'zh-CN';
+      /* 清脆女声：语速快、音调高、整句连贯播报 */
+      u.rate=1.32;
+      u.pitch=1.32;
+      u.volume=1;
       if(zhVoice)u.voice=zhVoice;
       speechSynthesis.speak(u);
     }catch(e){}
   },delay);
 }
 function announceRound(r,dragonInfo=null){
-  const pointText=`闲 ${r.pt} 点，庄 ${r.bt} 点`;
   const winnerText=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';
-  const pointSeq=['xian',digitVoice[r.pt]||'zero','dian','zhuang',digitVoice[r.bt]||'zero','dian'];
-  playVoiceSequence(pointSeq,.12,pointText);
-  setTimeout(()=>{
-    playVoiceSequence([r.winner==='PLAYER'?'xian_win':r.winner==='BANKER'?'zhuang_win':'tie_win'],.05,winnerText);
-    if(dragonInfo && dragonInfo.count>=4 && r.winner!=='TIE'){
-      const key=dragonInfo.winner==='BANKER'?'zhuang_dragon':'xian_dragon';
-      setTimeout(()=>playVoiceSequence([key],.05,(dragonInfo.winner==='BANKER'?'庄':'闲')+'长龙出现'),720);
-    }
-  },2100);
+  const dragonText=(dragonInfo && dragonInfo.count>=4 && r.winner!=='TIE') ? (dragonInfo.winner==='BANKER'?'庄长龙出现':'闲长龙出现') : '';
+  /* 一句话连贯读完，不再拆成“闲、七、点、庄、六、点” */
+  const sentence=`闲${r.pt}点，庄${r.bt}点，${winnerText}${dragonText?'，'+dragonText:''}`;
+  setTimeout(()=>speakCN(sentence,0,true),260);
+  if(dragonText){setTimeout(()=>speakCN(dragonText,0,true),1450)}
 }
-
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),900)}
 function addEvt(el, fn){el.addEventListener('pointerdown', e => {e.preventDefault(); fn(e);}, {passive:false})}
 if(soundBtn)addEvt(soundBtn,()=>unlockSound(true));
