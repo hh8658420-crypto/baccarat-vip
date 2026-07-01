@@ -40,7 +40,7 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 <body>
 <div class="app" id="app">
   <div class="topbar"><span id="timeText">15:25</span></div>
-  <div class="gameInfo"><span id="shoeNo">局号:GM1826701591</span><div class="clock" id="clock">15</div><span>限红:100~10,000</span></div>
+  <div class="gameInfo"><span id="shoeNo">局号:GM1826701591</span><div class="clock" id="clock">15</div><span>限红:100~200,000</span></div>
   <section class="stage">
     <div class="room"></div><div class="curtain"></div><div class="dealer"></div>
     <div class="videoHud"><div class="tag">DB真人　● LIVE 0.65</div></div>
@@ -121,7 +121,7 @@ let bankroll = 10000;
 let bets = {}, lastBets = {}, history = [];
 let miss = {PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};
 let stackIndex = 0;
-const AREA_MAX = 10000; // 单门限红：阻止无限倍投，结果仍然按真实8副牌随机
+const AREA_MAX = 200000; // 单门限红：20万，结果仍然按真实8副牌随机
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),900)}
 function addEvt(el, fn){el.addEventListener('pointerdown', e => {e.preventDefault(); fn(e);}, {passive:false})}
@@ -162,7 +162,7 @@ function betTotal(obj=bets){return Object.values(obj).reduce((s,v)=>s+Number(v||
 function updateBetsDisplay(){const p=bets.PLAYER||0,b=bets.BANKER||0,t=bets.TIE||0;document.getElementById('pAmt').textContent=fmt(p);document.getElementById('bAmt').textContent=fmt(b);const sum=betTotal(bets);document.getElementById('pPct').textContent=sum?Math.round(p/sum*100)+'%':'0%';document.getElementById('bPct').textContent=sum?Math.round(b/sum*100)+'%':'0%';document.getElementById('tPct').textContent=sum?Math.round(t/sum*100)+'%':'0%'}
 function clearBetChips(refund=false){if(refund){const back=betTotal(bets);if(back>0){bankroll+=back;updateBalance();}}document.querySelectorAll('.stackChip').forEach(x=>x.remove());bets={};stackIndex=0;updateBetsDisplay()}
 function flyChip(fromEl, toEl, value){const fr=fromEl.getBoundingClientRect(), tr=toEl.getBoundingClientRect();const appR=app.getBoundingClientRect();const x=fr.left+fr.width/2-16, y=fr.top+fr.height/2-16;const tx=tr.left+tr.width*(.38+Math.random()*.24)-16, ty=tr.top+tr.height*(.42+Math.random()*.24)-16;const f=document.createElement('div');f.className='floatChip '+chipClass(value);f.textContent=fmt(value);f.style.left=x+'px';f.style.top=y+'px';document.body.appendChild(f);requestAnimationFrame(()=>{f.classList.add('fly');f.style.transform=`translate(${tx-x}px,${ty-y}px) scale(.78)`});setTimeout(()=>{f.remove();const s=document.createElement('div');s.className='stackChip '+chipClass(value);s.textContent=fmt(value);const localX=tx-appR.left-board.getBoundingClientRect().left+appR.left;const localY=ty-board.getBoundingClientRect().top;s.style.left=Math.max(8,Math.min(toEl.clientWidth-40, tx-tr.left))+'px';s.style.top=Math.max(8,Math.min(toEl.clientHeight-40, ty-tr.top))+'px';s.style.transform=`translate(${(stackIndex%5)*3}px,${Math.floor(stackIndex/5)*-2}px) scale(.9)`;toEl.appendChild(s);stackIndex++},330)}
-function placeBet(box){if(dealing)return;const k=box.dataset.bet;if((bets[k]||0)+selectedValue>AREA_MAX){toast('单门限红 10K');return}if(bankroll<selectedValue){toast('模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
+function placeBet(box){if(dealing)return;const k=box.dataset.bet;if((bets[k]||0)+selectedValue>AREA_MAX){toast('单门限红 20万');return}if(bankroll<selectedValue){toast('模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
 chips.forEach(ch=>addEvt(ch,()=>{chips.forEach(c=>c.classList.remove('selected'));ch.classList.add('selected');selectedChip=ch;selectedValue=Number(ch.dataset.value)}));
 betBoxes.forEach(b=>addEvt(b,()=>placeBet(b)));
 addEvt(clearBtn,()=>{if(dealing)return;clearBetChips(true)});
