@@ -1,9 +1,10 @@
 {
-  "name":"Macau VIP Baccarat Simulator",
-  "short_name":"Baccarat V10",
-  "start_url":"./index.html",
-  "display":"standalone",
-  "background_color":"#040101",
-  "theme_color":"#080302",
-  "description":"百家乐概率模拟器，仅用于规则演示和数据测试。"
+  "name": "VIP真人百家乐",
+  "short_name": "VIP百家乐",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#4b0710",
+  "theme_color": "#4b0710",
+  "orientation": "portrait",
+  "icons": []
 }
