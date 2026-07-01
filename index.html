@@ -325,6 +325,92 @@ let miss = {PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:
 let stackIndex = 0;
 const AREA_MAX = 200000; // 单门限红：20万，结果仍然按真实8副牌随机
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ===== 声音系统：不依赖外部音频文件，使用 WebAudio + 中文语音播报 ===== */
+let audioCtx=null;
+function getAudioCtx(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return null;
+    if(!audioCtx)audioCtx=new AC();
+    if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }catch(e){return null}
+}
+function unlockSound(){
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  try{
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    g.gain.value=0.00001;o.frequency.value=1;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.02);
+    if(window.speechSynthesis) speechSynthesis.getVoices();
+  }catch(e){}
+}
+['pointerdown','touchstart','click'].forEach(ev=>document.addEventListener(ev,unlockSound,{passive:true}));
+function playTone(freq=600,dur=.08,type='sine',gain=.04,delay=0){
+  const ctx=getAudioCtx(); if(!ctx)return;
+  try{
+    const t=ctx.currentTime+delay;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,t);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(Math.max(gain,0.0002),t+.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+.04);
+  }catch(e){}
+}
+function playNoise(dur=.08,gain=.04,filterFreq=1300,delay=0){
+  const ctx=getAudioCtx(); if(!ctx)return;
+  try{
+    const length=Math.max(1,Math.floor(ctx.sampleRate*dur));
+    const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<length;i++){const decay=1-i/length;data[i]=(Math.random()*2-1)*decay;}
+    const src=ctx.createBufferSource();src.buffer=buffer;
+    const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=filterFreq;filt.Q.value=.9;
+    const g=ctx.createGain();const t=ctx.currentTime+delay;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+.03);
+  }catch(e){}
+}
+function playChipSound(){playTone(420,.055,'square',.035,0);playTone(760,.05,'triangle',.025,.035);playNoise(.045,.018,2200,.015)}
+function playDealSound(){playNoise(.06,.026,1800,0);playTone(260,.035,'triangle',.018,.02)}
+function playFlipSound(){playNoise(.075,.033,2600,0);playTone(900,.045,'sine',.018,.035)}
+function playWinSound(w){
+  if(w==='TIE'){playTone(560,.11,'triangle',.045,0);playTone(720,.14,'triangle',.04,.12);return;}
+  playTone(520,.08,'triangle',.042,0);playTone(680,.09,'triangle',.04,.09);playTone(860,.13,'triangle',.048,.19);
+}
+function playDragonRoar(){
+  const ctx=getAudioCtx(); if(!ctx)return;
+  try{
+    playNoise(.85,.085,520,0);playNoise(.55,.045,180,.08);
+    const t=ctx.currentTime+.02;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sawtooth';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(38,t+.82);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.075,t+.08);g.gain.exponentialRampToValueAtTime(0.0001,t+.9);
+    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.95);
+  }catch(e){}
+}
+function speakCN(text,delay=0){
+  if(!('speechSynthesis' in window))return;
+  setTimeout(()=>{
+    try{
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang='zh-CN';u.rate=1.05;u.pitch=1;u.volume=.95;
+      const voices=speechSynthesis.getVoices&&speechSynthesis.getVoices();
+      const zh=voices&&voices.find(v=>/zh|Chinese|普通话|国语/i.test(v.lang+' '+v.name));
+      if(zh)u.voice=zh;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  },delay);
+}
+function announceRound(r,dragonText=''){
+  try{if(window.speechSynthesis)speechSynthesis.cancel()}catch(e){}
+  const winnerText=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';
+  speakCN(`闲 ${r.pt} 点，庄 ${r.bt} 点`,120);
+  speakCN(dragonText?`${winnerText}，${dragonText}`:winnerText,1450);
+}
+
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),900)}
 function addEvt(el, fn){el.addEventListener('pointerdown', e => {e.preventDefault(); fn(e);}, {passive:false})}
 function cardPoint(c){if(['10','J','Q','K'].includes(c.r)) return 0; if(c.r==='A') return 1; return Number(c.r)}
@@ -385,11 +471,11 @@ function betTotal(obj=bets){return Object.values(obj).reduce((s,v)=>s+Number(v||
 function updateBetsDisplay(){const p=bets.PLAYER||0,b=bets.BANKER||0,t=bets.TIE||0;document.getElementById('pAmt').textContent=fmt(p);document.getElementById('bAmt').textContent=fmt(b);const sum=betTotal(bets);document.getElementById('pPct').textContent=sum?Math.round(p/sum*100)+'%':'0%';document.getElementById('bPct').textContent=sum?Math.round(b/sum*100)+'%':'0%';document.getElementById('tPct').textContent=sum?Math.round(t/sum*100)+'%':'0%'}
 function clearBetChips(refund=false){if(refund){const back=betTotal(bets);if(back>0){bankroll+=back;updateBalance();}}document.querySelectorAll('.stackChip').forEach(x=>x.remove());bets={};stackIndex=0;updateBetsDisplay()}
 function flyChip(fromEl, toEl, value){const fr=fromEl.getBoundingClientRect(), tr=toEl.getBoundingClientRect();const appR=app.getBoundingClientRect();const x=fr.left+fr.width/2-16, y=fr.top+fr.height/2-16;const tx=tr.left+tr.width*(.38+Math.random()*.24)-16, ty=tr.top+tr.height*(.42+Math.random()*.24)-16;const f=document.createElement('div');f.className='floatChip '+chipClass(value);f.textContent=fmt(value);f.style.left=x+'px';f.style.top=y+'px';document.body.appendChild(f);requestAnimationFrame(()=>{f.classList.add('fly');f.style.transform=`translate(${tx-x}px,${ty-y}px) scale(.78)`});setTimeout(()=>{f.remove();const s=document.createElement('div');s.className='stackChip '+chipClass(value);s.textContent=fmt(value);const localX=tx-appR.left-board.getBoundingClientRect().left+appR.left;const localY=ty-board.getBoundingClientRect().top;s.style.left=Math.max(8,Math.min(toEl.clientWidth-40, tx-tr.left))+'px';s.style.top=Math.max(8,Math.min(toEl.clientHeight-40, ty-tr.top))+'px';s.style.transform=`translate(${(stackIndex%5)*3}px,${Math.floor(stackIndex/5)*-2}px) scale(.9)`;toEl.appendChild(s);stackIndex++},330)}
-function placeBet(box){if(dealing)return;const k=box.dataset.bet;if((bets[k]||0)+selectedValue>AREA_MAX){toast('单门限红 20万');return}if(bankroll<selectedValue){toast(bankroll<=0?'请先输入兑换码兑换本金':'模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
+function placeBet(box){if(dealing)return;const k=box.dataset.bet;if((bets[k]||0)+selectedValue>AREA_MAX){toast('单门限红 20万');return}if(bankroll<selectedValue){toast(bankroll<=0?'请先输入兑换码兑换本金':'模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;playChipSound();flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
 chips.forEach(ch=>addEvt(ch,()=>{chips.forEach(c=>c.classList.remove('selected'));ch.classList.add('selected');selectedChip=ch;selectedValue=Number(ch.dataset.value)}));
 betBoxes.forEach(b=>addEvt(b,()=>placeBet(b)));
 addEvt(clearBtn,()=>{if(dealing)return;clearBetChips(true)});
-addEvt(repeatBtn,()=>{if(dealing)return;if(!Object.keys(lastBets).length){toast('暂无上一局下注');return}if(Object.values(lastBets).some(v=>v>AREA_MAX)){toast('上一局超过当前限红');return}clearBetChips(true);const need=betTotal(lastBets);if(bankroll<need){toast(bankroll<=0?'请先输入兑换码兑换本金':'模拟本金不足');return}bankroll-=need;updateBalance();bets={...lastBets};for(const [k,v] of Object.entries(bets)){const box=document.querySelector(`[data-bet="${k}"]`);if(box){flyChip(selectedChip,box,Math.min(v,10000))}}updateBetsDisplay()});
+addEvt(repeatBtn,()=>{if(dealing)return;if(!Object.keys(lastBets).length){toast('暂无上一局下注');return}if(Object.values(lastBets).some(v=>v>AREA_MAX)){toast('上一局超过当前限红');return}clearBetChips(true);const need=betTotal(lastBets);if(bankroll<need){toast(bankroll<=0?'请先输入兑换码兑换本金':'模拟本金不足');return}bankroll-=need;updateBalance();playChipSound();bets={...lastBets};for(const [k,v] of Object.entries(bets)){const box=document.querySelector(`[data-bet="${k}"]`);if(box){flyChip(selectedChip,box,Math.min(v,10000))}}updateBetsDisplay()});
 addEvt(commissionBtn,()=>{noCommission=false;bankerOdds.textContent='1:0.95';toast('庄赢固定抽水5%')});
 addEvt(redeemBtn,openRedeem);
 addEvt(redeemCancel,closeRedeem);
@@ -399,9 +485,9 @@ redeemInput.addEventListener('keydown',e=>{if(e.key==='Enter')redeemCode();if(e.
 function calcRound(){const p=[draw(),draw()], b=[draw(),draw()];let pt=total(p), bt=total(b);let p3=null,b3=null;if(pt<8 && bt<8){if(pt<=5){p3=draw();p.push(p3);pt=total(p)}if(!p3){if(bt<=5){b3=draw();b.push(b3)}}else{const x=cardPoint(p3);if(bt<=2 || (bt===3&&x!==8) || (bt===4&&x>=2&&x<=7) || (bt===5&&x>=4&&x<=7) || (bt===6&&(x===6||x===7))){b3=draw();b.push(b3)}}}pt=total(p);bt=total(b);const winner=pt>bt?'PLAYER':bt>pt?'BANKER':'TIE';return {p,b,pt,bt,winner,pPair:p[0].r===p[1].r,bPair:b[0].r===b[1].r,p3,b3}}
 function ensureResSlot(container, index){let slot=container.children[index];if(!slot){slot=document.createElement('div');slot.className='resSlot';container.appendChild(slot)}return slot}
 function updateLiveScore(pp=[],bb=[]){pScore.textContent=pp.length?total(pp):0;bScore.textContent=bb.length?total(bb):0}
-async function showBack(slot, mirror){slot.innerHTML=cardHtml(null,true);if(mirror)mirror.innerHTML=cardHtml(null,true);await sleep(520)}
+async function showBack(slot, mirror){playDealSound();slot.innerHTML=cardHtml(null,true);if(mirror)mirror.innerHTML=cardHtml(null,true);await sleep(520)}
 async function flipOne(slot, c){const el=slot && slot.querySelector('.card');if(el){el.style.transform='rotateY(90deg)'}await sleep(240);slot.innerHTML=cardHtml(c,false);const n=slot.querySelector('.card');if(n){n.style.transform='rotateY(-90deg)';requestAnimationFrame(()=>n.style.transform='rotateY(0deg)')}}
-async function flip(slot, c, mirror){await Promise.all([flipOne(slot,c), mirror?flipOne(mirror,c):Promise.resolve()]);await sleep(620)}
+async function flip(slot, c, mirror){playFlipSound();await Promise.all([flipOne(slot,c), mirror?flipOne(mirror,c):Promise.resolve()]);await sleep(620)}
 async function playRound(){if(dealing)return;setLocked(true);lastBets={...bets};roundNo++;updateHeader();resetCards();resultStrip.classList.add('show');const pR=[0,1,2].map(i=>ensureResSlot(pRes,i));const bR=[0,1,2].map(i=>ensureResSlot(bRes,i));const shownP=[],shownB=[];updateLiveScore(shownP,shownB);await sleep(300);await showBack(pSlots[0],pR[0]);await showBack(bSlots[0],bR[0]);await showBack(pSlots[1],pR[1]);await showBack(bSlots[1],bR[1]);const r=calcRound();await sleep(760);await flip(pSlots[0],r.p[0],pR[0]);shownP.push(r.p[0]);updateLiveScore(shownP,shownB);await flip(bSlots[0],r.b[0],bR[0]);shownB.push(r.b[0]);updateLiveScore(shownP,shownB);await flip(pSlots[1],r.p[1],pR[1]);shownP.push(r.p[1]);updateLiveScore(shownP,shownB);await flip(bSlots[1],r.b[1],bR[1]);shownB.push(r.b[1]);updateLiveScore(shownP,shownB);await sleep(600);if(r.p.length>2){await showBack(pSlots[2],pR[2]);await sleep(640);await flip(pSlots[2],r.p[2],pR[2]);shownP.push(r.p[2]);updateLiveScore(shownP,shownB)}else{pR[2].innerHTML=''}if(r.b.length>2){await showBack(bSlots[2],bR[2]);await sleep(640);await flip(bSlots[2],r.b[2],bR[2]);shownB.push(r.b[2]);updateLiveScore(shownP,shownB)}else{bR[2].innerHTML=''}await sleep(360);finishRound(r)}
 
 function getWinningBoxes(r){
@@ -434,6 +520,9 @@ function finishRound(r){
   const dragon=(st && st.count>=4 && r.winner!=='TIE') ? ' · '+(st.winner==='BANKER'?'庄':'闲')+'长龙'+st.count : '';
   winnerFlash.textContent=baseText+dragon;
   winnerFlash.classList.add('show');
+  playWinSound(r.winner);
+  announceRound(r, dragon ? dragon.replace(' · ','') : '');
+  if(dragon)setTimeout(playDragonRoar,620);
   updateMiss(r);renderRoads();highlightWinningBoxes(r);settleBets(r);clearBetChips(false);
   setTimeout(()=>{winnerFlash.classList.remove('show');resultStrip.classList.remove('show');resetCards()},2600);
   setTimeout(()=>{setLocked(false);startTimer()},3100)
