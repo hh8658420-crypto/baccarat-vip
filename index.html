@@ -1,115 +1,22 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <meta name="theme-color" content="#070301" />
-  <title>Macau VIP Baccarat Simulator V10</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#14080b">
+<title>DB真人百家乐模拟器 Final</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css"></head><body>
 <div id="app">
-  <header class="topbar">
-    <div class="brand">
-      <span class="brandMark">VIP</span>
-      <div>
-        <div class="brandTitle">MACAU BACCARAT</div>
-        <div class="brandSub">概率模拟 · 无充值 · 无提现 · 非真实博彩</div>
-      </div>
-    </div>
-    <div class="tableInfo">
-      <div>靴号 <b id="shoeNo">1</b></div>
-      <div>局号 <b id="roundNo">0</b></div>
-      <div>剩余牌 <b id="shoeLeft">416</b></div>
-    </div>
-    <div class="wallet">
-      <span>模拟余额</span><b id="money">100000</b>
-    </div>
-  </header>
-
-  <main class="main">
-    <section class="dealerPanel">
-      <div class="dealerVideo">
-        <div class="dealerFace"></div>
-        <div class="liveBadge">LIVE TABLE SIMULATION</div>
-      </div>
-      <div class="notice">本页面仅用于百家乐发牌规则、概率与路单数据模拟，不提供真实下注、充值或提现。</div>
-    </section>
-
-    <section class="tableStage">
-      <div class="countdown" id="countdown">15</div>
-      <div class="resultBanner" id="message">请选择筹码，然后在玩法区域下注</div>
-
-      <div class="hands">
-        <div class="handBox playerHand">
-          <div class="handHead"><span>PLAYER 闲</span><b id="playerScore">0</b></div>
-          <div class="cards" id="playerCards"></div>
-        </div>
-        <div class="shoeTray"><span>8副牌</span><i></i><small id="dealState">等待下注</small></div>
-        <div class="handBox bankerHand">
-          <div class="handHead"><span>BANKER 庄</span><b id="bankerScore">0</b></div>
-          <div class="cards" id="bankerCards"></div>
-        </div>
-      </div>
-
-      <div class="betLayout">
-        <div class="sectionTitle primaryTitle">正玩法 MAIN BETS</div>
-        <div class="mainBets">
-          <button class="betBox main player" data-bet="player">
-            <span class="cn">闲</span><span class="en">PLAYER</span><strong>1 : 1</strong><em id="amount_player">0</em>
-          </button>
-          <button class="betBox main tie" data-bet="tie">
-            <span class="cn">和</span><span class="en">TIE</span><strong>1 : 8</strong><em id="amount_tie">0</em>
-          </button>
-          <button class="betBox main banker" data-bet="banker">
-            <span class="cn">庄</span><span class="en">BANKER</span><strong>1 : 0.95</strong><em id="amount_banker">0</em>
-          </button>
-        </div>
-
-        <div class="sectionTitle sideTitle">副玩法 SIDE BETS</div>
-        <div class="sideBets">
-          <button class="betBox side" data-bet="playerPair"><span>闲对</span><strong>1:11</strong><em id="amount_playerPair">0</em></button>
-          <button class="betBox side" data-bet="bankerPair"><span>庄对</span><strong>1:11</strong><em id="amount_bankerPair">0</em></button>
-          <button class="betBox side" data-bet="anyPair"><span>任意对子</span><strong>1:5</strong><em id="amount_anyPair">0</em></button>
-          <button class="betBox side" data-bet="perfectPair"><span>完美对子</span><strong>1:25</strong><em id="amount_perfectPair">0</em></button>
-          <button class="betBox side" data-bet="big"><span>大</span><strong>1:0.54</strong><em id="amount_big">0</em></button>
-          <button class="betBox side" data-bet="small"><span>小</span><strong>1:1.5</strong><em id="amount_small">0</em></button>
-        </div>
-      </div>
-    </section>
-
-    <aside class="roadPanel">
-      <div class="stats">
-        <div><span>庄</span><b id="bWins">0</b></div>
-        <div><span>闲</span><b id="pWins">0</b></div>
-        <div><span>和</span><b id="tWins">0</b></div>
-        <div><span>胜率</span><b id="winRate">0%</b></div>
-      </div>
-      <div class="roadCard"><h3>珠盘路</h3><div class="beadGrid" id="beadRoad"></div></div>
-      <div class="roadCard bigRoadCard"><h3>大路</h3><div class="bigRoadGrid" id="bigRoad"></div></div>
-    </aside>
+  <header class="phoneTop"><div class="left">‹</div><div class="title">DB真人</div><div class="right"><span id="soundBtn">🔊</span> ⛶</div></header>
+  <section class="liveRoom">
+    <div class="casinoBg"><div class="dealer"><div class="head"></div><div class="hair"></div><div class="body"></div><div class="arm leftArm"></div><div class="arm rightArm"></div></div><div class="tableLip"></div></div>
+    <div class="liveHud"><span class="redDot"></span><b>0.65</b><span>极速模拟桌</span><i>靴 <b id="shoeNo">1</b></i><i>局 <b id="roundNo">0</b></i></div>
+    <div class="screenBox"><b id="statusText">等待下注</b><small>8副牌 · 标准补牌规则</small></div>
+    <div class="dealZone"><div class="miniHand"><b>闲</b><div id="pMini" class="miniCards"></div></div><div class="miniHand bankerMini"><b>庄</b><div id="bMini" class="miniCards"></div></div></div>
+  </section>
+  <main class="betDesk">
+    <div class="timerWrap"><div id="timerRing" class="timerRing"><span id="countdown">15</span></div><div id="message" class="message">请选择筹码下注</div></div>
+    <section class="mainPlay"><button class="bet main p" data-bet="player"><small>1:1</small><b>闲</b><em id="amount_player">0</em></button><button class="bet main t" data-bet="tie"><small>1:8</small><b>和</b><em id="amount_tie">0</em></button><button class="bet main b" data-bet="banker"><small>1:0.95</small><b>庄</b><em id="amount_banker">0</em></button></section>
+    <section class="sidePlay"><button class="bet side" data-bet="playerPair"><b>闲对</b><small>1:11</small><em id="amount_playerPair">0</em></button><button class="bet side" data-bet="bankerPair"><b>庄对</b><small>1:11</small><em id="amount_bankerPair">0</em></button><button class="bet side" data-bet="anyPair"><b>任意对子</b><small>1:5</small><em id="amount_anyPair">0</em></button><button class="bet side" data-bet="perfectPair"><b>完美对子</b><small>1:25</small><em id="amount_perfectPair">0</em></button><button class="bet side" data-bet="big"><b>大</b><small>1:0.54</small><em id="amount_big">0</em></button><button class="bet side" data-bet="small"><b>小</b><small>1:1.5</small><em id="amount_small">0</em></button></section>
+    <div class="chipBar" id="chips"><button class="chip" data-chip="100">100</button><button class="chip" data-chip="500">500</button><button class="chip active" data-chip="1000">1K</button><button class="chip" data-chip="5000">5K</button><button class="chip" data-chip="10000">1W</button><button class="chip" data-chip="50000">5W</button></div>
+    <div class="actionBar"><button id="repeatBtn">重复</button><button id="cancelBtn">撤销</button><button id="dealBtn" class="dealBtn">立即开牌</button><button id="resetBtn">重置</button></div>
+    <div class="moneyBar"><span>余额 <b id="money">100000</b></span><span>下注 <b id="totalBet">0</b></span><span>剩牌 <b id="shoeLeft">416</b></span></div>
   </main>
-
-  <footer class="controlBar">
-    <div class="chips" id="chips">
-      <button class="chip" data-chip="100">100</button>
-      <button class="chip" data-chip="500">500</button>
-      <button class="chip active" data-chip="1000">1K</button>
-      <button class="chip" data-chip="5000">5K</button>
-      <button class="chip" data-chip="10000">10K</button>
-      <button class="chip" data-chip="50000">50K</button>
-    </div>
-    <div class="totalBet">总下注 <b id="totalBet">0</b></div>
-    <div class="actions">
-      <button id="repeatBtn" class="actionBtn dark">重复</button>
-      <button id="cancelBtn" class="actionBtn dark">撤销</button>
-      <button id="dealBtn" class="actionBtn deal">开牌</button>
-      <button id="soundBtn" class="actionBtn icon">🔊</button>
-      <button id="resetBtn" class="actionBtn dark">重置</button>
-    </div>
-  </footer>
-</div>
-<script src="game.js"></script>
-</body>
-</html>
+  <section class="roads"><div class="roadTop"><b>珠盘路</b><span>庄 <i id="bWins">0</i></span><span>闲 <i id="pWins">0</i></span><span>和 <i id="tWins">0</i></span><span>胜率 <i id="winRate">0%</i></span></div><div id="beadRoad" class="beadRoad"></div><div class="roadTitle">大路</div><div id="bigRoad" class="bigRoad"></div></section>
+  <div class="disclaimer">仅用于百家乐开奖概率、补牌规则与路单数据模拟；无充值、无提现、无真实博彩。</div>
+</div><script src="game.js"></script></body></html>
