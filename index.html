@@ -189,6 +189,24 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 .videoStatus,.videoHud{display:none!important;}
 @media (max-height:720px){#dealerVideo{object-position:50% 39%!important;}}
 
+
+/* 兑换码本金系统 */
+.roadWallet{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.redeemBtn{height:39px;min-width:48px;border:0;border-radius:10px;background:linear-gradient(180deg,#ffe28b,#c98224);color:#4b080d;font-size:15px;font-weight:900;box-shadow:0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35)}
+.redeemBtn:active{transform:scale(.96);filter:brightness(.95)}
+.redeemMask{position:absolute;inset:0;z-index:99;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.42);backdrop-filter:blur(3px)}
+.redeemMask.show{display:flex}
+.redeemBox{width:82%;max-width:360px;border-radius:16px;background:linear-gradient(180deg,#b52430,#731019);border:1px solid rgba(255,220,180,.28);box-shadow:0 18px 45px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);padding:16px 14px;color:#fff2e9;text-align:center}
+.redeemTitle{font-size:21px;font-weight:900;color:#ffd56c;margin-bottom:6px;letter-spacing:.5px}
+.redeemSub{font-size:12px;color:rgba(255,235,225,.68);margin-bottom:12px}
+#redeemInput{width:100%;height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.18);outline:none;background:rgba(0,0,0,.26);color:#fff;font-size:18px;text-align:center;font-weight:900;letter-spacing:1px;text-transform:uppercase;user-select:text;-webkit-user-select:text}
+#redeemInput::placeholder{color:rgba(255,255,255,.38);font-weight:700;font-size:15px}
+.redeemActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}
+.redeemActions button{height:42px;border:0;border-radius:11px;font-size:16px;font-weight:900;color:#fff}
+#redeemCancel{background:rgba(255,255,255,.13)}
+#redeemConfirm{background:linear-gradient(180deg,#ffd56c,#c98224);color:#4b080d}
+.redeemTip{margin-top:10px;font-size:11px;color:rgba(255,240,220,.58);line-height:1.35}
+
 </style>
 </head>
 <body>
@@ -238,7 +256,7 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
   </section>
   <section class="roadTop">
     <div class="stats" id="stats"></div>
-    <div class="roadBalance" id="balanceText">本金:10,000</div>
+    <div class="roadWallet"><div class="roadBalance" id="balanceText">本金:0</div><button class="redeemBtn" id="redeemBtn" type="button">兑换</button></div>
   </section>
   <section class="road">
     <div class="bead"><div class="gridBg"></div><div class="roadCanvas" id="beadRoad"></div></div>
@@ -246,6 +264,16 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
   </section>
   <div class="resultStrip" id="resultStrip"><div class="resultSide p"><div class="score"><small>闲</small><span id="pScore">0</span></div><div class="resCards" id="pRes"></div></div><div class="resultSide b"><div class="resCards" id="bRes"></div><div class="score"><small>庄</small><span id="bScore">0</span></div></div></div>
   <div class="winnerFlash" id="winnerFlash">闲赢</div>
+
+  <div class="redeemMask" id="redeemMask">
+    <div class="redeemBox">
+      <div class="redeemTitle">兑换模拟本金</div>
+      <div class="redeemSub">输入兑换码后才可获得模拟本金</div>
+      <input id="redeemInput" type="text" inputmode="text" autocomplete="off" placeholder="请输入兑换码" />
+      <div class="redeemActions"><button id="redeemCancel" type="button">取消</button><button id="redeemConfirm" type="button">确认兑换</button></div>
+      <div class="redeemTip">前端兑换码仅用于模拟测试，可在代码里修改兑换码和金额。</div>
+    </div>
+  </div>
   <div class="toast" id="toast">请先选择下注区域</div>
 </div>
 <script>
@@ -269,6 +297,11 @@ const derivedRoad = document.getElementById('derivedRoad');
 const toastEl = document.getElementById('toast');
 const shoeNo = document.getElementById('shoeNo');
 const balanceText = document.getElementById('balanceText');
+const redeemBtn = document.getElementById('redeemBtn');
+const redeemMask = document.getElementById('redeemMask');
+const redeemInput = document.getElementById('redeemInput');
+const redeemCancel = document.getElementById('redeemCancel');
+const redeemConfirm = document.getElementById('redeemConfirm');
 const timeText = document.getElementById('timeText');
 const chips = [...document.querySelectorAll('.chip')];
 const betBoxes = [...document.querySelectorAll('.betBox[data-bet]')];
@@ -278,7 +311,15 @@ const commissionBtn = document.getElementById('commission');
 const bankerOdds = document.getElementById('bankerOdds');
 let selectedValue = 100, selectedChip = chips[0], noCommission = false;
 let deck = [], roundNo = 0, timer = 15, ticking = null, dealing = false;
-let bankroll = 10000;
+const BANKROLL_KEY='baccarat_sim_bankroll_v1';
+const USED_CODES_KEY='baccarat_sim_used_codes_v1';
+const REDEEM_CODES={
+  'VIP10000':10000,
+  'GM10000':10000,
+  'TEST50000':50000,
+  'VIP200000':200000
+};
+let bankroll = loadBankroll();
 let bets = {}, lastBets = {}, history = [];
 let miss = {PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};
 let stackIndex = 0;
@@ -317,18 +358,44 @@ function setLocked(v){dealing=v; app.classList.toggle('locked', v)}
 function startTimer(){clearInterval(ticking);timer=15;clockEl.textContent=timer;ticking=setInterval(()=>{if(dealing)return;timer--;clockEl.textContent=timer;if(timer<=0){clearInterval(ticking);playRound()}},1000)}
 function updateHeader(){shoeNo.textContent = '局号:GM' + String(roundNo).padStart(10,'0')}
 function money(v){return Math.round(v).toLocaleString('zh-CN')}
-function updateBalance(){balanceText.textContent='本金:'+money(bankroll)}
+
+function loadBankroll(){try{const v=Number(localStorage.getItem(BANKROLL_KEY)||0);return Number.isFinite(v)&&v>0?Math.round(v):0}catch(e){return 0}}
+function saveBankroll(){try{localStorage.setItem(BANKROLL_KEY,String(Math.max(0,Math.round(bankroll))))}catch(e){}}
+function readUsedCodes(){try{return JSON.parse(localStorage.getItem(USED_CODES_KEY)||'[]')}catch(e){return []}}
+function saveUsedCodes(list){try{localStorage.setItem(USED_CODES_KEY,JSON.stringify(list))}catch(e){}}
+function openRedeem(){if(dealing)return;redeemMask.classList.add('show');redeemInput.value='';setTimeout(()=>redeemInput.focus(),80)}
+function closeRedeem(){redeemMask.classList.remove('show');redeemInput.blur()}
+function redeemCode(){
+  const code=(redeemInput.value||'').trim().toUpperCase();
+  if(!code){toast('请输入兑换码');return}
+  const amount=REDEEM_CODES[code];
+  if(!amount){toast('兑换码无效');return}
+  const used=readUsedCodes();
+  if(used.includes(code)){toast('兑换码已使用');return}
+  bankroll+=amount;
+  updateBalance();
+  used.push(code);
+  saveUsedCodes(used);
+  closeRedeem();
+  toast('兑换成功 +'+money(amount));
+}
+function updateBalance(){balanceText.textContent='本金:'+money(bankroll);saveBankroll()}
 function updateClockText(){const d=new Date();timeText.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
 function betTotal(obj=bets){return Object.values(obj).reduce((s,v)=>s+Number(v||0),0)}
 function updateBetsDisplay(){const p=bets.PLAYER||0,b=bets.BANKER||0,t=bets.TIE||0;document.getElementById('pAmt').textContent=fmt(p);document.getElementById('bAmt').textContent=fmt(b);const sum=betTotal(bets);document.getElementById('pPct').textContent=sum?Math.round(p/sum*100)+'%':'0%';document.getElementById('bPct').textContent=sum?Math.round(b/sum*100)+'%':'0%';document.getElementById('tPct').textContent=sum?Math.round(t/sum*100)+'%':'0%'}
 function clearBetChips(refund=false){if(refund){const back=betTotal(bets);if(back>0){bankroll+=back;updateBalance();}}document.querySelectorAll('.stackChip').forEach(x=>x.remove());bets={};stackIndex=0;updateBetsDisplay()}
 function flyChip(fromEl, toEl, value){const fr=fromEl.getBoundingClientRect(), tr=toEl.getBoundingClientRect();const appR=app.getBoundingClientRect();const x=fr.left+fr.width/2-16, y=fr.top+fr.height/2-16;const tx=tr.left+tr.width*(.38+Math.random()*.24)-16, ty=tr.top+tr.height*(.42+Math.random()*.24)-16;const f=document.createElement('div');f.className='floatChip '+chipClass(value);f.textContent=fmt(value);f.style.left=x+'px';f.style.top=y+'px';document.body.appendChild(f);requestAnimationFrame(()=>{f.classList.add('fly');f.style.transform=`translate(${tx-x}px,${ty-y}px) scale(.78)`});setTimeout(()=>{f.remove();const s=document.createElement('div');s.className='stackChip '+chipClass(value);s.textContent=fmt(value);const localX=tx-appR.left-board.getBoundingClientRect().left+appR.left;const localY=ty-board.getBoundingClientRect().top;s.style.left=Math.max(8,Math.min(toEl.clientWidth-40, tx-tr.left))+'px';s.style.top=Math.max(8,Math.min(toEl.clientHeight-40, ty-tr.top))+'px';s.style.transform=`translate(${(stackIndex%5)*3}px,${Math.floor(stackIndex/5)*-2}px) scale(.9)`;toEl.appendChild(s);stackIndex++},330)}
-function placeBet(box){if(dealing)return;const k=box.dataset.bet;if((bets[k]||0)+selectedValue>AREA_MAX){toast('单门限红 20万');return}if(bankroll<selectedValue){toast('模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
+function placeBet(box){if(dealing)return;const k=box.dataset.bet;if((bets[k]||0)+selectedValue>AREA_MAX){toast('单门限红 20万');return}if(bankroll<selectedValue){toast(bankroll<=0?'请先输入兑换码兑换本金':'模拟本金不足');return}bankroll-=selectedValue;updateBalance();bets[k]=(bets[k]||0)+selectedValue;flyChip(selectedChip,box,selectedValue);updateBetsDisplay()}
 chips.forEach(ch=>addEvt(ch,()=>{chips.forEach(c=>c.classList.remove('selected'));ch.classList.add('selected');selectedChip=ch;selectedValue=Number(ch.dataset.value)}));
 betBoxes.forEach(b=>addEvt(b,()=>placeBet(b)));
 addEvt(clearBtn,()=>{if(dealing)return;clearBetChips(true)});
-addEvt(repeatBtn,()=>{if(dealing)return;if(!Object.keys(lastBets).length){toast('暂无上一局下注');return}if(Object.values(lastBets).some(v=>v>AREA_MAX)){toast('上一局超过当前限红');return}clearBetChips(true);const need=betTotal(lastBets);if(bankroll<need){toast('模拟本金不足');return}bankroll-=need;updateBalance();bets={...lastBets};for(const [k,v] of Object.entries(bets)){const box=document.querySelector(`[data-bet="${k}"]`);if(box){flyChip(selectedChip,box,Math.min(v,10000))}}updateBetsDisplay()});
+addEvt(repeatBtn,()=>{if(dealing)return;if(!Object.keys(lastBets).length){toast('暂无上一局下注');return}if(Object.values(lastBets).some(v=>v>AREA_MAX)){toast('上一局超过当前限红');return}clearBetChips(true);const need=betTotal(lastBets);if(bankroll<need){toast(bankroll<=0?'请先输入兑换码兑换本金':'模拟本金不足');return}bankroll-=need;updateBalance();bets={...lastBets};for(const [k,v] of Object.entries(bets)){const box=document.querySelector(`[data-bet="${k}"]`);if(box){flyChip(selectedChip,box,Math.min(v,10000))}}updateBetsDisplay()});
 addEvt(commissionBtn,()=>{noCommission=false;bankerOdds.textContent='1:0.95';toast('庄赢固定抽水5%')});
+addEvt(redeemBtn,openRedeem);
+addEvt(redeemCancel,closeRedeem);
+addEvt(redeemConfirm,redeemCode);
+redeemMask.addEventListener('pointerdown',e=>{if(e.target===redeemMask)closeRedeem()});
+redeemInput.addEventListener('keydown',e=>{if(e.key==='Enter')redeemCode();if(e.key==='Escape')closeRedeem()});
 function calcRound(){const p=[draw(),draw()], b=[draw(),draw()];let pt=total(p), bt=total(b);let p3=null,b3=null;if(pt<8 && bt<8){if(pt<=5){p3=draw();p.push(p3);pt=total(p)}if(!p3){if(bt<=5){b3=draw();b.push(b3)}}else{const x=cardPoint(p3);if(bt<=2 || (bt===3&&x!==8) || (bt===4&&x>=2&&x<=7) || (bt===5&&x>=4&&x<=7) || (bt===6&&(x===6||x===7))){b3=draw();b.push(b3)}}}pt=total(p);bt=total(b);const winner=pt>bt?'PLAYER':bt>pt?'BANKER':'TIE';return {p,b,pt,bt,winner,pPair:p[0].r===p[1].r,bPair:b[0].r===b[1].r,p3,b3}}
 function ensureResSlot(container, index){let slot=container.children[index];if(!slot){slot=document.createElement('div');slot.className='resSlot';container.appendChild(slot)}return slot}
 function updateLiveScore(pp=[],bb=[]){pScore.textContent=pp.length?total(pp):0;bScore.textContent=bb.length?total(bb):0}
