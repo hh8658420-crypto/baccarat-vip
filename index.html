@@ -207,14 +207,26 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 #redeemConfirm{background:linear-gradient(180deg,#ffd56c,#c98224);color:#4b080d}
 .redeemTip{margin-top:10px;font-size:11px;color:rgba(255,240,220,.58);line-height:1.35}
 
-.soundBtn{height:34px;padding:0 10px;border:1px solid rgba(255,230,160,.35);border-radius:12px;background:linear-gradient(180deg,rgba(255,226,130,.24),rgba(85,24,20,.42));color:#ffe7a4;font-size:13px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.14);white-space:nowrap}
+.soundBtn{display:none!important;height:34px;padding:0 10px;border:1px solid rgba(255,230,160,.35);border-radius:12px;background:linear-gradient(180deg,rgba(255,226,130,.24),rgba(85,24,20,.42));color:#ffe7a4;font-size:13px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.14);white-space:nowrap}
 .soundBtn.on{background:linear-gradient(180deg,#ffe082,#b86b16);color:#4a080b;border-color:rgba(255,245,185,.72)}
+
+
+
+/* ===== 简单联机房间版：Firebase Realtime Database 同步状态 ===== */
+.topbar{gap:8px;justify-content:space-between!important}
+.topbarLeft{display:flex;align-items:center;gap:8px;min-width:0}
+.onlineStatus{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:rgba(0,0,0,.08);color:#333;font-size:11px;font-weight:900;white-space:nowrap}
+.onlineStatus::before{content:"";width:6px;height:6px;border-radius:50%;background:#999;margin-right:5px;box-shadow:0 0 6px rgba(0,0,0,.18)}
+.onlineStatus.on{background:rgba(31,160,86,.14);color:#086b31}.onlineStatus.on::before{background:#19d46f;box-shadow:0 0 8px #19d46f}
+.onlineStatus.off{background:rgba(168,58,58,.12);color:#8c1616}.onlineStatus.off::before{background:#c83a3a}
+.roomBtn{height:22px;max-width:120px;padding:0 9px;border:0;border-radius:999px;background:linear-gradient(180deg,#ffe28b,#c98224);color:#4b080d;font-size:11px;font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:inset 0 1px 0 rgba(255,255,255,.38)}
+.roomBtn:active{transform:scale(.96)}
 
 </style>
 </head>
 <body>
 <div class="app" id="app">
-  <div class="topbar"><span id="timeText">15:25</span></div>
+  <div class="topbar"><div class="topbarLeft"><span id="timeText">15:25</span><span id="onlineStatus" class="onlineStatus off">单机</span></div><button id="roomBtn" class="roomBtn" type="button">房间 VIP001</button></div>
   <div class="gameInfo"><span id="shoeNo">局号:GM1826701591</span><div class="clock" id="clock">15</div><span>限红:100~200,000</span></div>
   <section class="stage">
     <div class="liveBg"></div>
@@ -259,7 +271,7 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
   </section>
   <section class="roadTop">
     <div class="stats" id="stats"></div>
-    <div class="roadWallet"><div class="roadBalance" id="balanceText">本金:0</div><button class="soundBtn" id="soundBtn" type="button">🔇声音</button><button class="redeemBtn" id="redeemBtn" type="button">兑换</button></div>
+    <div class="roadWallet"><div class="roadBalance" id="balanceText">本金:0</div><button class="redeemBtn" id="redeemBtn" type="button">兑换</button></div>
   </section>
   <section class="road">
     <div class="bead"><div class="gridBg"></div><div class="roadCanvas" id="beadRoad"></div></div>
@@ -279,6 +291,9 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
   </div>
   <div class="toast" id="toast">请先选择下注区域</div>
 </div>
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
 (() => {
 'use strict';
@@ -307,6 +322,8 @@ const redeemInput = document.getElementById('redeemInput');
 const redeemCancel = document.getElementById('redeemCancel');
 const redeemConfirm = document.getElementById('redeemConfirm');
 const timeText = document.getElementById('timeText');
+const onlineStatus = document.getElementById('onlineStatus');
+const roomBtn = document.getElementById('roomBtn');
 const chips = [...document.querySelectorAll('.chip')];
 const betBoxes = [...document.querySelectorAll('.betBox[data-bet]')];
 const clearBtn = document.getElementById('clearBtn');
@@ -334,135 +351,27 @@ let bets = {}, lastBets = {}, history = [];
 let miss = {PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};
 let stackIndex = 0;
 const AREA_MAX = 200000; // 单门限红：20万，结果仍然按真实8副牌随机
+const ROUND_SECONDS = 15;
+const ONLINE_ROOM_KEY='baccarat_online_room_v1';
+function roomFromUrl(){try{return (new URL(location.href)).searchParams.get('room')||''}catch(e){return ''}}
+let DEFAULT_ROOM=(roomFromUrl()||localStorage.getItem(ONLINE_ROOM_KEY)||window.BACCARAT_ROOM_ID||'VIP001').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24)||'VIP001';
+const ONLINE={enabled:false,ready:false,roomId:DEFAULT_ROOM,db:null,ref:null,state:null,deadline:0,offset:0,lastAnimated:null,historyRev:''};
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* ===== 声音系统：WebAudio音效 + 本地女声语音文件 =====
-   重点：不再依赖 iPhone 的 speechSynthesis，开奖播报直接播放 assets/audio/*.mp3 */
-let audioCtx=null;
-let soundReady=false;
-const audioCache=new Map();
-const voiceBase='assets/audio/';
-function getAudioCtx(){
-  try{
-    const AC=window.AudioContext||window.webkitAudioContext;
-    if(!AC)return null;
-    if(!audioCtx)audioCtx=new AC();
-    if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
-    return audioCtx;
-  }catch(e){return null}
-}
-function setSoundButton(){
-  if(!soundBtn)return;
-  soundBtn.textContent=soundReady?'🔊声音':'🔇声音';
-  soundBtn.classList.toggle('on',soundReady);
-}
-async function loadAudioClip(name){
-  const ctx=getAudioCtx();
-  if(!ctx)return null;
-  if(audioCache.has(name))return audioCache.get(name);
-  const url=voiceBase+name+'.mp3?v=girlvoice2';
-  const p=fetch(url,{cache:'force-cache'})
-    .then(r=>{if(!r.ok)throw new Error('missing '+url);return r.arrayBuffer()})
-    .then(buf=>ctx.decodeAudioData(buf));
-  audioCache.set(name,p);
-  return p.catch(err=>{console.warn(err);audioCache.delete(name);return null});
-}
-function playClip(name,delay=0,gain=1){
-  if(!soundReady)return Promise.resolve(0);
-  const ctx=getAudioCtx();
-  if(!ctx)return Promise.resolve(0);
-  return loadAudioClip(name).then(buffer=>{
-    if(!buffer)return 0;
-    try{
-      const src=ctx.createBufferSource();
-      const g=ctx.createGain();
-      src.buffer=buffer;
-      g.gain.value=gain;
-      src.connect(g);g.connect(ctx.destination);
-      src.start(ctx.currentTime+delay);
-      return buffer.duration;
-    }catch(e){return 0;}
-  });
-}
-function unlockSound(withTest=false){
-  const ctx=getAudioCtx();
-  if(!ctx)return false;
-  try{
-    if(ctx.state==='suspended')ctx.resume().catch(()=>{});
-    const o=ctx.createOscillator(), g=ctx.createGain();
-    g.gain.value=0.00001;o.frequency.value=1;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.02);
-    soundReady=true;setSoundButton();
-    if(withTest){
-      playTone(760,.08,'triangle',.075,0);playTone(980,.10,'triangle',.075,.08);
-      playClip('sound_on',.06,1.15);
-      toast('声音已开启');
-      /* 顺手预载常用语音，避免开奖时卡顿 */
-      ['sound_on','xian_dragon','zhuang_dragon'].forEach(n=>loadAudioClip(n));
-    }
-    return true;
-  }catch(e){return false}
-}
-['pointerdown','touchstart','click'].forEach(ev=>document.addEventListener(ev,()=>unlockSound(false),{passive:true,once:false}));
-function playTone(freq=600,dur=.08,type='sine',gain=.04,delay=0){
-  const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
-  try{
-    const t=ctx.currentTime+delay;
-    const o=ctx.createOscillator(), g=ctx.createGain();
-    o.type=type;o.frequency.setValueAtTime(freq,t);
-    g.gain.setValueAtTime(0.0001,t);
-    g.gain.exponentialRampToValueAtTime(Math.max(gain,0.0002),t+.012);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+.05);
-  }catch(e){}
-}
-function playNoise(dur=.08,gain=.04,filterFreq=1300,delay=0){
-  const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
-  try{
-    const length=Math.max(1,Math.floor(ctx.sampleRate*dur));
-    const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
-    const data=buffer.getChannelData(0);
-    for(let i=0;i<length;i++){const decay=1-i/length;data[i]=(Math.random()*2-1)*decay;}
-    const src=ctx.createBufferSource();src.buffer=buffer;
-    const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=filterFreq;filt.Q.value=.9;
-    const g=ctx.createGain();const t=ctx.currentTime+delay;
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+.04);
-  }catch(e){}
-}
-function playChipSound(){playTone(430,.055,'square',.07,0);playTone(780,.05,'triangle',.055,.035);playNoise(.045,.045,2400,.015)}
-function playDealSound(){playNoise(.10,.065,1900,0);playTone(260,.05,'triangle',.04,.02)}
-function playFlipSound(){playNoise(.10,.07,3000,0);playTone(940,.06,'sine',.05,.035)}
-function playWinSound(w){
-  if(w==='TIE'){playTone(560,.13,'triangle',.075,0);playTone(720,.18,'triangle',.075,.13);return;}
-  playTone(520,.10,'triangle',.075,0);playTone(690,.11,'triangle',.075,.1);playTone(880,.18,'triangle',.085,.22);
-}
-function playDragonRoar(){
-  const ctx=getAudioCtx(); if(!ctx || !soundReady)return;
-  try{
-    playNoise(1.25,.20,360,0);playNoise(1.05,.16,95,.02);playNoise(.72,.11,760,.24);
-    const t=ctx.currentTime+.02;
-    const o=ctx.createOscillator(), g=ctx.createGain(), filt=ctx.createBiquadFilter();
-    o.type='sawtooth';o.frequency.setValueAtTime(155,t);o.frequency.exponentialRampToValueAtTime(32,t+1.28);
-    filt.type='lowpass';filt.frequency.setValueAtTime(680,t);filt.frequency.exponentialRampToValueAtTime(170,t+1.28);
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.08);g.gain.exponentialRampToValueAtTime(0.0001,t+1.35);
-    o.connect(filt);filt.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+1.42);
-    setTimeout(()=>{playNoise(.65,.14,180,0);playTone(70,.62,'sawtooth',.13,0);},420);
-  }catch(e){}
-}
-function announceRound(r,dragonInfo=null){
-  const name=`r_${r.pt}_${r.bt}_${r.winner}`;
-  const dragonText=(dragonInfo && dragonInfo.count>=4 && r.winner!=='TIE') ? (dragonInfo.winner==='BANKER'?'zhuang_dragon':'xian_dragon') : '';
-  setTimeout(()=>{
-    playClip(name,0,1.22);
-    if(dragonText){
-      setTimeout(()=>{playDragonRoar();playClip(dragonText,.10,1.15);},1050);
-    }
-  },260);
-}
-if(soundBtn)addEvt(soundBtn,()=>unlockSound(true));
+/* ===== 声音系统已取消：全部声音函数改为空函数，避免加载任何音频资源 ===== */
+function setSoundButton(){}
+function unlockSound(){return false}
+function playTone(){}
+function playNoise(){}
+function playClip(){return Promise.resolve(0)}
+function playChipSound(){}
+function playDealSound(){}
+function playFlipSound(){}
+function playWinSound(){}
+function playDragonRoar(){}
+function announceRound(){}
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),900)}
 function addEvt(el, fn){el.addEventListener('pointerdown', e => {e.preventDefault(); fn(e);}, {passive:false})}
-if(soundBtn)addEvt(soundBtn,()=>unlockSound(true));
 function cardPoint(c){if(['10','J','Q','K'].includes(c.r)) return 0; if(c.r==='A') return 1; return Number(c.r)}
 function total(hand){return hand.reduce((s,c)=>s+cardPoint(c),0)%10}
 function randInt(max){
@@ -491,7 +400,12 @@ function chipClass(v){return v>=10000?'c10000':v>=5000?'c5000':v>=1000?'c1000':v
 function fmt(v){return v>=1000?(v/1000).toString().replace(/\.0$/,'')+'K':String(v)}
 function resetCards(){pSlots.forEach(s=>s.innerHTML='');bSlots.forEach(s=>s.innerHTML='');pRes.innerHTML='';bRes.innerHTML='';pScore.textContent='0';bScore.textContent='0';resultStrip.classList.remove('show');winnerFlash.classList.remove('show');clearWinningBoxes()}
 function setLocked(v){dealing=v; app.classList.toggle('locked', v)}
-function startTimer(){clearInterval(ticking);timer=15;clockEl.textContent=timer;ticking=setInterval(()=>{if(dealing)return;timer--;clockEl.textContent=timer;if(timer<=0){clearInterval(ticking);playRound()}},1000)}
+function startTimer(){
+  clearInterval(ticking);
+  if(ONLINE.enabled){startOnlineTimer();return}
+  timer=ROUND_SECONDS;clockEl.textContent=timer;
+  ticking=setInterval(()=>{if(dealing)return;timer--;clockEl.textContent=timer;if(timer<=0){clearInterval(ticking);playRound()}},1000)
+}
 function updateHeader(){shoeNo.textContent = '局号:GM' + String(roundNo).padStart(10,'0')}
 function money(v){return Math.round(v).toLocaleString('zh-CN')}
 
@@ -517,6 +431,108 @@ function redeemCode(){
 }
 function updateBalance(){balanceText.textContent='本金:'+money(bankroll);saveBankroll()}
 function updateClockText(){const d=new Date();timeText.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function serverNow(){return Date.now()+(ONLINE.offset||0)}
+function setOnlineStatus(text, cls='off'){
+  if(!onlineStatus)return;
+  onlineStatus.textContent=text;
+  onlineStatus.classList.remove('on','off');
+  onlineStatus.classList.add(cls);
+}
+function setRoomLabel(){if(roomBtn)roomBtn.textContent='房间 '+ONLINE.roomId}
+function hasFirebaseConfig(){
+  const c=window.BACCARAT_FIREBASE_CONFIG;
+  return !!(c && c.apiKey && c.databaseURL && !String(c.apiKey).includes('填写') && !String(c.databaseURL).includes('填写'));
+}
+function cleanResult(r){
+  return {
+    p:(r.p||[]).map(c=>({r:c.r,s:c.s})),b:(r.b||[]).map(c=>({r:c.r,s:c.s})),
+    pt:Number(r.pt)||0,bt:Number(r.bt)||0,winner:r.winner||'TIE',
+    pPair:!!r.pPair,bPair:!!r.bPair
+  };
+}
+function restoreMissFromHistory(){
+  miss={PLAYER:0,BANKER:0,TIE:0,PLAYER_PAIR:0,BANKER_PAIR:0,LUCKY7:0,SUPER7:0,LUCKY6:0};
+  for(const r of history){
+    for(const k of Object.keys(miss)) miss[k]++;
+    miss[r.winner]=0;
+    if(r.pPair)miss.PLAYER_PAIR=0;
+    if(r.bPair)miss.BANKER_PAIR=0;
+    if(r.winner==='PLAYER'&&r.pt===7)miss.LUCKY7=0;
+    if(r.winner==='BANKER'&&r.bt===6)miss.LUCKY6=0;
+    if(r.winner==='PLAYER'&&r.pt===7&&r.bt===6)miss.SUPER7=0;
+  }
+  document.querySelectorAll('[data-miss]').forEach(el=>{const k=el.dataset.miss;el.textContent=(miss[k]||0)+'局未出'});
+}
+function applyRemoteHistory(list){
+  const next=Array.isArray(list)?list.map(cleanResult).slice(-120):[];
+  const rev=next.length+':'+(next.length?JSON.stringify(next[next.length-1]):'empty');
+  if(rev===ONLINE.historyRev || dealing)return;
+  ONLINE.historyRev=rev;history=next;roundNo=Number((ONLINE.state&&ONLINE.state.roundNo)||history.length)||history.length;
+  restoreMissFromHistory();renderRoads();updateHeader();
+}
+function startOnlineTimer(){
+  clearInterval(ticking);
+  const tick=()=>{
+    if(dealing)return;
+    const left=Math.max(0,Math.ceil(((ONLINE.deadline||serverNow()+ROUND_SECONDS*1000)-serverNow())/1000));
+    clockEl.textContent=left;
+    if(left<=0){clearInterval(ticking);tryOnlineDeal()}
+  };
+  tick();ticking=setInterval(tick,250);
+}
+function tryOnlineDeal(){
+  if(!ONLINE.enabled||dealing||!ONLINE.ref)return;
+  const proposed=cleanResult(calcRound());
+  const now=serverNow();
+  ONLINE.ref.transaction(s=>{
+    s=s||{};
+    if(s.phase!=='betting')return s;
+    const deadline=Number(s.deadline||0);
+    if(deadline && now<deadline-350)return s;
+    const nextRound=Number(s.roundNo||0)+1;
+    return Object.assign({},s,{phase:'dealing',roundNo:nextRound,resultId:nextRound,result:proposed,dealStartAt:now,updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  },(err,committed)=>{if(err){setOnlineStatus('联机异常','off');toast('联机异常，已保持等待')}else if(!committed){startTimer()}});
+}
+function finishOnlineRound(r){
+  if(!ONLINE.enabled||!ONLINE.ref||!r.onlineResultId)return;
+  const resultId=r.onlineResultId;
+  const clean=cleanResult(r);
+  ONLINE.ref.transaction(s=>{
+    s=s||{};
+    if(s.phase!=='dealing'||Number(s.resultId)!==Number(resultId))return s;
+    const h=(Array.isArray(s.history)?s.history:[]).map(cleanResult);
+    const already=h.length && JSON.stringify(h[h.length-1])===JSON.stringify(clean);
+    const nextHistory=(already?h:h.concat([clean])).slice(-120);
+    return Object.assign({},s,{phase:'betting',deadline:serverNow()+ROUND_SECONDS*1000,history:nextHistory,result:null,resultId:null,dealStartAt:null,updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  });
+}
+function applyOnlineState(s){
+  if(!s)return;
+  ONLINE.state=s;ONLINE.deadline=Number(s.deadline||0);
+  setOnlineStatus('联机中','on');setRoomLabel();
+  if(Array.isArray(s.history))applyRemoteHistory(s.history);
+  if(s.phase==='betting'){
+    if(!dealing){setLocked(false);startTimer()}
+  }else if(s.phase==='dealing' && s.result && Number(s.resultId)!==Number(ONLINE.lastAnimated)){
+    ONLINE.lastAnimated=Number(s.resultId);
+    const r=cleanResult(s.result);r.onlineResultId=Number(s.resultId);
+    playRound(r,{online:true,roundNo:Number(s.roundNo)||Number(s.resultId)||roundNo+1});
+  }
+}
+function initOnline(){
+  setRoomLabel();
+  if(roomBtn){addEvt(roomBtn,()=>{const v=prompt('输入房间号，例如 VIP001',ONLINE.roomId);if(!v)return;const id=v.trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24);if(!id){toast('房间号无效');return}localStorage.setItem(ONLINE_ROOM_KEY,id);const u=new URL(location.href);u.searchParams.set('room',id);location.href=u.toString()})}
+  if(!hasFirebaseConfig()){setOnlineStatus('单机','off');return false}
+  try{
+    if(!window.firebase||!firebase.initializeApp||!firebase.database){setOnlineStatus('联机组件未加载','off');return false}
+    if(!firebase.apps.length)firebase.initializeApp(window.BACCARAT_FIREBASE_CONFIG);
+    ONLINE.db=firebase.database();ONLINE.ref=ONLINE.db.ref('rooms/'+ONLINE.roomId);ONLINE.enabled=true;ONLINE.ready=true;
+    ONLINE.db.ref('.info/serverTimeOffset').on('value',snap=>{ONLINE.offset=Number(snap.val()||0)});
+    ONLINE.ref.transaction(s=>s||{phase:'betting',roundNo:0,deadline:serverNow()+ROUND_SECONDS*1000,history:[],createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP});
+    ONLINE.ref.on('value',snap=>applyOnlineState(snap.val()));
+    setOnlineStatus('连接中','on');return true;
+  }catch(e){console.error(e);setOnlineStatus('联机失败','off');toast('联机初始化失败');return false}
+}
 function betTotal(obj=bets){return Object.values(obj).reduce((s,v)=>s+Number(v||0),0)}
 function updateBetsDisplay(){const p=bets.PLAYER||0,b=bets.BANKER||0,t=bets.TIE||0;document.getElementById('pAmt').textContent=fmt(p);document.getElementById('bAmt').textContent=fmt(b);const sum=betTotal(bets);document.getElementById('pPct').textContent=sum?Math.round(p/sum*100)+'%':'0%';document.getElementById('bPct').textContent=sum?Math.round(b/sum*100)+'%':'0%';document.getElementById('tPct').textContent=sum?Math.round(t/sum*100)+'%':'0%'}
 function clearBetChips(refund=false){if(refund){const back=betTotal(bets);if(back>0){bankroll+=back;updateBalance();}}document.querySelectorAll('.stackChip').forEach(x=>x.remove());bets={};stackIndex=0;updateBetsDisplay()}
@@ -538,7 +554,20 @@ function updateLiveScore(pp=[],bb=[]){pScore.textContent=pp.length?total(pp):0;b
 async function showBack(slot, mirror){playDealSound();slot.innerHTML=cardHtml(null,true);if(mirror)mirror.innerHTML=cardHtml(null,true);await sleep(520)}
 async function flipOne(slot, c){const el=slot && slot.querySelector('.card');if(el){el.style.transform='rotateY(90deg)'}await sleep(240);slot.innerHTML=cardHtml(c,false);const n=slot.querySelector('.card');if(n){n.style.transform='rotateY(-90deg)';requestAnimationFrame(()=>n.style.transform='rotateY(0deg)')}}
 async function flip(slot, c, mirror){playFlipSound();await Promise.all([flipOne(slot,c), mirror?flipOne(mirror,c):Promise.resolve()]);await sleep(620)}
-async function playRound(){if(dealing)return;setLocked(true);lastBets={...bets};roundNo++;updateHeader();resetCards();resultStrip.classList.add('show');const pR=[0,1,2].map(i=>ensureResSlot(pRes,i));const bR=[0,1,2].map(i=>ensureResSlot(bRes,i));const shownP=[],shownB=[];updateLiveScore(shownP,shownB);await sleep(300);await showBack(pSlots[0],pR[0]);await showBack(bSlots[0],bR[0]);await showBack(pSlots[1],pR[1]);await showBack(bSlots[1],bR[1]);const r=calcRound();await sleep(760);await flip(pSlots[0],r.p[0],pR[0]);shownP.push(r.p[0]);updateLiveScore(shownP,shownB);await flip(bSlots[0],r.b[0],bR[0]);shownB.push(r.b[0]);updateLiveScore(shownP,shownB);await flip(pSlots[1],r.p[1],pR[1]);shownP.push(r.p[1]);updateLiveScore(shownP,shownB);await flip(bSlots[1],r.b[1],bR[1]);shownB.push(r.b[1]);updateLiveScore(shownP,shownB);await sleep(600);if(r.p.length>2){await showBack(pSlots[2],pR[2]);await sleep(640);await flip(pSlots[2],r.p[2],pR[2]);shownP.push(r.p[2]);updateLiveScore(shownP,shownB)}else{pR[2].innerHTML=''}if(r.b.length>2){await showBack(bSlots[2],bR[2]);await sleep(640);await flip(bSlots[2],r.b[2],bR[2]);shownB.push(r.b[2]);updateLiveScore(shownP,shownB)}else{bR[2].innerHTML=''}await sleep(360);finishRound(r)}
+async function playRound(providedResult=null, opts={}){
+  if(dealing)return;
+  setLocked(true);lastBets={...bets};
+  if(opts.online){roundNo=Number(opts.roundNo||providedResult.onlineResultId||roundNo+1)}else{roundNo++}
+  updateHeader();resetCards();resultStrip.classList.add('show');
+  const pR=[0,1,2].map(i=>ensureResSlot(pRes,i));const bR=[0,1,2].map(i=>ensureResSlot(bRes,i));const shownP=[],shownB=[];updateLiveScore(shownP,shownB);
+  await sleep(300);await showBack(pSlots[0],pR[0]);await showBack(bSlots[0],bR[0]);await showBack(pSlots[1],pR[1]);await showBack(bSlots[1],bR[1]);
+  const r=providedResult?cleanResult(providedResult):calcRound();
+  if(providedResult&&providedResult.onlineResultId)r.onlineResultId=providedResult.onlineResultId;
+  await sleep(760);await flip(pSlots[0],r.p[0],pR[0]);shownP.push(r.p[0]);updateLiveScore(shownP,shownB);await flip(bSlots[0],r.b[0],bR[0]);shownB.push(r.b[0]);updateLiveScore(shownP,shownB);await flip(pSlots[1],r.p[1],pR[1]);shownP.push(r.p[1]);updateLiveScore(shownP,shownB);await flip(bSlots[1],r.b[1],bR[1]);shownB.push(r.b[1]);updateLiveScore(shownP,shownB);await sleep(600);
+  if(r.p.length>2){await showBack(pSlots[2],pR[2]);await sleep(640);await flip(pSlots[2],r.p[2],pR[2]);shownP.push(r.p[2]);updateLiveScore(shownP,shownB)}else{pR[2].innerHTML=''}
+  if(r.b.length>2){await showBack(bSlots[2],bR[2]);await sleep(640);await flip(bSlots[2],r.b[2],bR[2]);shownB.push(r.b[2]);updateLiveScore(shownP,shownB)}else{bR[2].innerHTML=''}
+  await sleep(360);finishRound(r,opts)
+}
 
 function getWinningBoxes(r){
   const wins=[];
@@ -562,7 +591,7 @@ function highlightWinningBoxes(r){
 }
 
 function settleBets(r){const staked=betTotal(bets);if(!staked){toast('未下注，本局只记录路单');return}let returned=0;const totalCards=r.p.length+r.b.length;for(const [k,amt] of Object.entries(bets)){let odds=0,push=false;if(k==='PLAYER'){if(r.winner==='PLAYER')odds=1;else if(r.winner==='TIE')push=true}else if(k==='BANKER'){if(r.winner==='BANKER')odds=noCommission?1:.95;else if(r.winner==='TIE')push=true}else if(k==='TIE'){if(r.winner==='TIE')odds=8}else if(k==='PLAYER_PAIR'){if(r.pPair)odds=11}else if(k==='BANKER_PAIR'){if(r.bPair)odds=11}else if(k==='LUCKY7'){if(r.winner==='PLAYER'&&r.pt===7)odds=r.p.length===2?6:15}else if(k==='LUCKY6'){if(r.winner==='BANKER'&&r.bt===6)odds=r.b.length===2?12:20}else if(k==='SUPER7'){if(r.winner==='PLAYER'&&r.pt===7&&r.bt===6)odds=totalCards===4?30:totalCards===5?40:totalCards===6?100:0}if(push){returned+=amt}else if(odds>0){returned+=amt+amt*odds}}returned=Math.round(returned);bankroll+=returned;updateBalance();const net=returned-staked;if(net>0)toast('本局盈利 +'+money(net));else if(net<0)toast('本局亏损 '+money(net));else toast('本局走水')}
-function finishRound(r){
+function finishRound(r, opts={}){
   pScore.textContent=r.pt;bScore.textContent=r.bt;resultStrip.classList.add('show');
   history.push(r);if(history.length>120)history.shift();
   const baseText=r.winner==='PLAYER'?'闲赢':r.winner==='BANKER'?'庄赢':'和局';
@@ -576,7 +605,7 @@ function finishRound(r){
   if(dragonInfo){setTimeout(playDragonRoar,520);setTimeout(playDragonRoar,1350)}
   updateMiss(r);renderRoads();highlightWinningBoxes(r);settleBets(r);clearBetChips(false);
   setTimeout(()=>{winnerFlash.classList.remove('show');resultStrip.classList.remove('show');resetCards()},2600);
-  setTimeout(()=>{setLocked(false);startTimer()},3100)
+  setTimeout(()=>{setLocked(false);if(ONLINE.enabled&&opts.online){finishOnlineRound(r)}else{startTimer()}},3100)
 }
 function updateMiss(r){for(const k of Object.keys(miss)) miss[k]++;miss[r.winner]=0;if(r.pPair)miss.PLAYER_PAIR=0;if(r.bPair)miss.BANKER_PAIR=0;if(r.winner==='PLAYER'&&r.pt===7)miss.LUCKY7=0;if(r.winner==='BANKER'&&r.bt===6)miss.LUCKY6=0;if(r.winner==='PLAYER'&&r.pt===7&&r.bt===6)miss.SUPER7=0;document.querySelectorAll('[data-miss]').forEach(el=>{const k=el.dataset.miss;el.textContent=miss[k]+'局未出'})}
 function renderRoads(){renderStats();renderBead();renderBigRoad();renderDerived()}
@@ -669,7 +698,7 @@ function initDealerVideo(){
   v.addEventListener('error',()=>{ app.classList.remove('dealer-video-ready'); });
 })();
 
-deck=makeDeck();initGame();initDealerVideo();setInterval(updateClockText,30000);startTimer();
+deck=makeDeck();initGame();initDealerVideo();setInterval(updateClockText,30000);if(!initOnline())startTimer();
 })();
 </script>
 </body>
