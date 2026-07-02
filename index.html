@@ -223,11 +223,14 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 .roomBtn{height:22px;max-width:120px;padding:0 9px;border:0;border-radius:999px;background:linear-gradient(180deg,#ffe28b,#c98224);color:#4b080d;font-size:11px;font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:inset 0 1px 0 rgba(255,255,255,.38)}
 .roomBtn:active{transform:scale(.96)}
 
+
+.netDiag{position:absolute;left:8px;right:8px;top:30px;z-index:50;min-height:20px;padding:3px 8px;border-radius:9px;background:rgba(0,0,0,.35);color:#ffe9a7;font-size:10px;font-weight:800;line-height:1.35;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.netDiag.ok{color:#99ffb5;background:rgba(0,70,25,.32)}.netDiag.err{color:#ffb3b3;background:rgba(120,0,0,.36)}
 </style>
 </head>
 <body>
 <div class="app" id="app">
-  <div class="topbar"><div class="topbarLeft"><span id="timeText">15:25</span><span id="onlineStatus" class="onlineStatus off">单机</span></div><button id="roomBtn" class="roomBtn" type="button">房间 VIP001</button></div>
+  <div class="topbar"><div class="topbarLeft"><span id="timeText">15:25</span><span id="onlineStatus" class="onlineStatus off">单机</span></div><button id="roomBtn" class="roomBtn" type="button">房间 VIP001</button></div><div id="netDiag" class="netDiag">联机诊断：启动中</div>
   <div class="gameInfo"><span id="shoeNo">局号:GM1826701591</span><div class="clock" id="clock">15</div><span>限红:100~200,000</span></div>
   <section class="stage">
     <div class="liveBg"></div>
@@ -292,7 +295,19 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
   </div>
   <div class="toast" id="toast">请先选择下注区域</div>
 </div>
-<script src="firebase-config.js"></script>
+<script>
+window.BACCARAT_FIREBASE_CONFIG = window.BACCARAT_FIREBASE_CONFIG || {
+  apiKey:"AIzaSyDijXLWvqRg-ea3Hyg4vCASl05SfoQ-L7I",
+  authDomain:"bjlfwq.firebaseapp.com",
+  databaseURL:"https://bjlfwq-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"bjlfwq",
+  storageBucket:"bjlfwq.firebasestorage.app",
+  messagingSenderId:"666510175833",
+  appId:"1:666510175833:web:1d1c5593bc0066289e4b48"
+};
+window.BACCARAT_ROOM_ID = window.BACCARAT_ROOM_ID || "VIP001";
+</script>
+<script src="firebase-config.js?v=diag2"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
@@ -325,6 +340,7 @@ const redeemConfirm = document.getElementById('redeemConfirm');
 const timeText = document.getElementById('timeText');
 const onlineStatus = document.getElementById('onlineStatus');
 const roomBtn = document.getElementById('roomBtn');
+const netDiag = document.getElementById('netDiag');
 const chips = [...document.querySelectorAll('.chip')];
 const betBoxes = [...document.querySelectorAll('.betBox[data-bet]')];
 const clearBtn = document.getElementById('clearBtn');
@@ -356,7 +372,7 @@ const ROUND_SECONDS = 15;
 const ONLINE_ROOM_KEY='baccarat_online_room_v1';
 function roomFromUrl(){try{return (new URL(location.href)).searchParams.get('room')||''}catch(e){return ''}}
 let DEFAULT_ROOM=(roomFromUrl()||localStorage.getItem(ONLINE_ROOM_KEY)||window.BACCARAT_ROOM_ID||'VIP001').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24)||'VIP001';
-const ONLINE={enabled:false,ready:false,roomId:DEFAULT_ROOM,db:null,ref:null,state:null,deadline:0,offset:0,lastAnimated:null,historyRev:''};
+const ONLINE={enabled:false,ready:false,mode:'',roomId:DEFAULT_ROOM,db:null,ref:null,state:null,deadline:0,offset:0,lastAnimated:null,historyRev:'',restUrl:'',restTimer:null,clientId:(localStorage.getItem('baccarat_client_id')||('c'+Date.now()+Math.random().toString(16).slice(2)))};localStorage.setItem('baccarat_client_id',ONLINE.clientId);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ===== 声音系统已取消：全部声音函数改为空函数，避免加载任何音频资源 ===== */
@@ -440,6 +456,15 @@ function setOnlineStatus(text, cls='off'){
   onlineStatus.classList.add(cls);
 }
 function setRoomLabel(){if(roomBtn)roomBtn.textContent='房间 '+ONLINE.roomId}
+
+function diag(msg, cls=''){
+  if(!netDiag)return;
+  netDiag.textContent='联机诊断：'+msg;
+  netDiag.classList.remove('ok','err');
+  if(cls)netDiag.classList.add(cls);
+}
+window.addEventListener('error',e=>{diag('JS错误：'+(e.message||'未知错误'),'err')});
+window.addEventListener('unhandledrejection',e=>{diag('Promise错误：'+((e.reason&&e.reason.message)||e.reason||'未知错误'),'err')});
 function hasFirebaseConfig(){
   const c=window.BACCARAT_FIREBASE_CONFIG;
   return !!(c && c.apiKey && c.databaseURL && !String(c.apiKey).includes('填写') && !String(c.databaseURL).includes('填写'));
@@ -481,23 +506,49 @@ function startOnlineTimer(){
   };
   tick();ticking=setInterval(tick,250);
 }
-function tryOnlineDeal(){
-  if(!ONLINE.enabled||dealing||!ONLINE.ref)return;
+async function tryOnlineDeal(){
+  if(!ONLINE.enabled||dealing)return;
   const proposed=cleanResult(calcRound());
   const now=serverNow();
+  if(ONLINE.mode==='rest'){
+    try{
+      const s=await restGet()||{};
+      if(s.phase!=='betting'){startTimer();return}
+      const deadline=Number(s.deadline||0);
+      if(deadline && now<deadline-350){startTimer();return}
+      const nextRound=Number(s.roundNo||0)+1;
+      await restPut(Object.assign({},s,{phase:'dealing',roundNo:nextRound,resultId:nextRound,result:proposed,dealStartAt:now,updatedAt:Date.now(),dealerClient:ONLINE.clientId}));
+      diag('REST写入开奖结果成功','ok');
+    }catch(e){setOnlineStatus('REST异常','off');diag('REST写入失败：'+(e.message||e),'err');startTimer()}
+    return;
+  }
+  if(!ONLINE.ref)return;
   ONLINE.ref.transaction(s=>{
     s=s||{};
     if(s.phase!=='betting')return s;
     const deadline=Number(s.deadline||0);
     if(deadline && now<deadline-350)return s;
     const nextRound=Number(s.roundNo||0)+1;
-    return Object.assign({},s,{phase:'dealing',roundNo:nextRound,resultId:nextRound,result:proposed,dealStartAt:now,updatedAt:firebase.database.ServerValue.TIMESTAMP});
-  },(err,committed)=>{if(err){setOnlineStatus('联机异常','off');toast('联机异常，已保持等待')}else if(!committed){startTimer()}});
+    return Object.assign({},s,{phase:'dealing',roundNo:nextRound,resultId:nextRound,result:proposed,dealStartAt:now,updatedAt:firebase.database.ServerValue.TIMESTAMP,dealerClient:ONLINE.clientId});
+  },(err,committed)=>{if(err){setOnlineStatus('联机异常','off');diag('SDK交易失败：'+(err.message||err),'err');toast('联机异常，已保持等待')}else if(!committed){startTimer()}else{diag('SDK写入开奖结果成功','ok')}});
 }
-function finishOnlineRound(r){
-  if(!ONLINE.enabled||!ONLINE.ref||!r.onlineResultId)return;
+async function finishOnlineRound(r){
+  if(!ONLINE.enabled||!r.onlineResultId)return;
   const resultId=r.onlineResultId;
   const clean=cleanResult(r);
+  if(ONLINE.mode==='rest'){
+    try{
+      const s=await restGet()||{};
+      if(s.phase!=='dealing'||Number(s.resultId)!==Number(resultId))return;
+      const h=(Array.isArray(s.history)?s.history:[]).map(cleanResult);
+      const already=h.length && JSON.stringify(h[h.length-1])===JSON.stringify(clean);
+      const nextHistory=(already?h:h.concat([clean])).slice(-120);
+      await restPut(Object.assign({},s,{phase:'betting',deadline:serverNow()+ROUND_SECONDS*1000,history:nextHistory,result:null,resultId:null,dealStartAt:null,updatedAt:Date.now()}));
+      diag('REST完成本局，等待下一轮','ok');
+    }catch(e){diag('REST结算写入失败：'+(e.message||e),'err')}
+    return;
+  }
+  if(!ONLINE.ref)return;
   ONLINE.ref.transaction(s=>{
     s=s||{};
     if(s.phase!=='dealing'||Number(s.resultId)!==Number(resultId))return s;
@@ -505,7 +556,7 @@ function finishOnlineRound(r){
     const already=h.length && JSON.stringify(h[h.length-1])===JSON.stringify(clean);
     const nextHistory=(already?h:h.concat([clean])).slice(-120);
     return Object.assign({},s,{phase:'betting',deadline:serverNow()+ROUND_SECONDS*1000,history:nextHistory,result:null,resultId:null,dealStartAt:null,updatedAt:firebase.database.ServerValue.TIMESTAMP});
-  });
+  },(err)=>{if(err)diag('SDK结算写入失败：'+(err.message||err),'err')});
 }
 function applyOnlineState(s){
   if(!s)return;
@@ -520,19 +571,49 @@ function applyOnlineState(s){
     playRound(r,{online:true,roundNo:Number(s.roundNo)||Number(s.resultId)||roundNo+1});
   }
 }
+function dbBase(){return String((window.BACCARAT_FIREBASE_CONFIG&&window.BACCARAT_FIREBASE_CONFIG.databaseURL)||'').replace(/\/$/,'')}
+function restUrl(){return dbBase()+'/rooms/'+encodeURIComponent(ONLINE.roomId)+'.json'}
+async function restGet(){const r=await fetch(restUrl()+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('GET '+r.status+' '+(await r.text()).slice(0,120));return r.json()}
+async function restPut(obj){const r=await fetch(restUrl(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});if(!r.ok)throw new Error('PUT '+r.status+' '+(await r.text()).slice(0,160));return r.json()}
+async function initRestOnline(reason){
+  if(!hasFirebaseConfig()){setOnlineStatus('单机','off');diag('没有 Firebase 配置','err');return false}
+  ONLINE.enabled=true;ONLINE.ready=true;ONLINE.mode='rest';ONLINE.restUrl=restUrl();ONLINE.offset=0;
+  setOnlineStatus('REST连接','on');diag('SDK不可用，启用REST联机：'+(reason||''));
+  try{
+    let s=await restGet();
+    if(!s){
+      s={phase:'betting',roundNo:0,deadline:Date.now()+ROUND_SECONDS*1000,history:[],createdAt:Date.now(),updatedAt:Date.now(),creator:ONLINE.clientId};
+      await restPut(s);
+      diag('REST创建房间成功','ok');
+    }else{diag('REST读取房间成功','ok')}
+    applyOnlineState(s);
+    clearInterval(ONLINE.restTimer);
+    ONLINE.restTimer=setInterval(async()=>{try{const n=await restGet();if(n)applyOnlineState(n)}catch(e){diag('REST读取失败：'+(e.message||e),'err')}},900);
+    return true;
+  }catch(e){ONLINE.enabled=false;setOnlineStatus('联机失败','off');diag('REST联机失败：'+(e.message||e),'err');return false}
+}
 function initOnline(){
   setRoomLabel();
   if(roomBtn){addEvt(roomBtn,()=>{const v=prompt('输入房间号，例如 VIP001',ONLINE.roomId);if(!v)return;const id=v.trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24);if(!id){toast('房间号无效');return}localStorage.setItem(ONLINE_ROOM_KEY,id);const u=new URL(location.href);u.searchParams.set('room',id);location.href=u.toString()})}
-  if(!hasFirebaseConfig()){setOnlineStatus('单机','off');return false}
+  if(!hasFirebaseConfig()){setOnlineStatus('单机','off');diag('firebase-config 未加载或 databaseURL 缺失','err');return false}
+  diag('配置已加载，准备连接 Firebase');
   try{
-    if(!window.firebase||!firebase.initializeApp||!firebase.database){setOnlineStatus('联机组件未加载','off');return false}
+    if(!window.firebase||!firebase.initializeApp||!firebase.database){
+      setOnlineStatus('SDK未加载','off');
+      setTimeout(()=>initRestOnline('Firebase SDK 未加载'),100);
+      return true;
+    }
     if(!firebase.apps.length)firebase.initializeApp(window.BACCARAT_FIREBASE_CONFIG);
-    ONLINE.db=firebase.database();ONLINE.ref=ONLINE.db.ref('rooms/'+ONLINE.roomId);ONLINE.enabled=true;ONLINE.ready=true;
+    ONLINE.db=firebase.database();ONLINE.ref=ONLINE.db.ref('rooms/'+ONLINE.roomId);ONLINE.enabled=true;ONLINE.ready=true;ONLINE.mode='sdk';
     ONLINE.db.ref('.info/serverTimeOffset').on('value',snap=>{ONLINE.offset=Number(snap.val()||0)});
-    ONLINE.ref.transaction(s=>s||{phase:'betting',roundNo:0,deadline:serverNow()+ROUND_SECONDS*1000,history:[],createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP});
-    ONLINE.ref.on('value',snap=>applyOnlineState(snap.val()));
+    ONLINE.ref.transaction(s=>s||{phase:'betting',roundNo:0,deadline:serverNow()+ROUND_SECONDS*1000,history:[],createdAt:firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP,creator:ONLINE.clientId},(err,committed,snap)=>{
+      if(err){setOnlineStatus('写入失败','off');diag('SDK创建房间失败：'+(err.message||err),'err');initRestOnline('SDK写入失败');return}
+      diag(committed?'SDK创建/读取房间成功':'SDK房间已存在','ok');
+      const v=snap&&snap.val&&snap.val(); if(v)applyOnlineState(v);
+    });
+    ONLINE.ref.on('value',snap=>{const v=snap.val(); if(v){applyOnlineState(v);diag('SDK实时同步中','ok')}else{diag('SDK读取为空，等待创建房间')}});
     setOnlineStatus('连接中','on');return true;
-  }catch(e){console.error(e);setOnlineStatus('联机失败','off');toast('联机初始化失败');return false}
+  }catch(e){console.error(e);setOnlineStatus('联机失败','off');diag('SDK初始化异常：'+(e.message||e),'err');setTimeout(()=>initRestOnline('SDK异常'),100);return true}
 }
 function betTotal(obj=bets){return Object.values(obj).reduce((s,v)=>s+Number(v||0),0)}
 function updateBetsDisplay(){const p=bets.PLAYER||0,b=bets.BANKER||0,t=bets.TIE||0;document.getElementById('pAmt').textContent=fmt(p);document.getElementById('bAmt').textContent=fmt(b);const sum=betTotal(bets);document.getElementById('pPct').textContent=sum?Math.round(p/sum*100)+'%':'0%';document.getElementById('bPct').textContent=sum?Math.round(b/sum*100)+'%':'0%';document.getElementById('tPct').textContent=sum?Math.round(t/sum*100)+'%':'0%'}
