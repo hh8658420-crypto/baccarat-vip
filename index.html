@@ -81,7 +81,7 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
 
 
 
-/* ===== 真人荷官视频接入层：把 assets/dealer.mp4 或 assets/dealer.webm 放进去即可自动播放 ===== */
+/* ===== 真人荷官视频接入层：本版本使用根目录 hj.mp4 与 hj_poster_small.jpg ===== */
 .stage{
   background:
     radial-gradient(ellipse at 50% 2%,rgba(255,225,160,.34),transparent 27%),
@@ -232,8 +232,8 @@ body{display:flex;justify-content:center;align-items:stretch;background:#090909}
     <div class="liveBg"></div>
     <div class="lightRig"></div>
     <div class="dealerVideoWrap" aria-label="真人动态荷官视频区">
-      <video id="dealerVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture poster="assets/hj_poster_small.jpg?v=voice2">
-        <source src="assets/hj.mp4?v=voice2" type="video/mp4">
+      <video id="dealerVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture poster="hj_poster_small.jpg?v=root1">
+        <source src="hj.mp4?v=root1" type="video/mp4">
       </video>
     </div>
     <div class="videoStatus" id="videoStatus"></div>
