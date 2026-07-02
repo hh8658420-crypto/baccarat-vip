@@ -7,5 +7,4 @@ window.BACCARAT_FIREBASE_CONFIG = {
   messagingSenderId: "666510175833",
   appId: "1:666510175833:web:1d1c5593bc0066289e4b48"
 };
-
 window.BACCARAT_ROOM_ID = "VIP001";
